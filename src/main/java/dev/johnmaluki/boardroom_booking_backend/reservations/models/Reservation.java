@@ -1,6 +1,8 @@
 package dev.johnmaluki.boardroom_booking_backend.reservations.models;
 
+import dev.johnmaluki.boardroom_booking_backend.boardrooms.models.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.core.models.BaseEntity;
+import dev.johnmaluki.boardroom_booking_backend.users.models.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.utils.ApprovalStatus;
 import dev.johnmaluki.boardroom_booking_backend.utils.MeetingType;
 import jakarta.persistence.*;
@@ -18,9 +20,6 @@ import java.time.LocalTime;
 @Entity
 @Table(name="reservations")
 public class Reservation extends BaseEntity {
-    @Column(name = "boardroom_id")
-    private Long boardroomId;
-
     @Column(name="start_date")
     private LocalDate startDate;
 
@@ -54,5 +53,11 @@ public class Reservation extends BaseEntity {
     @Column(name = "attendees", nullable = false) // store coma separated string
     private String attendees;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "boardroom_id")
+    private Boardroom boardroom;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private AppUser user;
 }

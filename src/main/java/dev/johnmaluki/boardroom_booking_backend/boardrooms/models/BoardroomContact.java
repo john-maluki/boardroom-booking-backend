@@ -14,8 +14,10 @@ import lombok.experimental.SuperBuilder;
 @Entity
 @Table(name="boardroom_contact")
 public class BoardroomContact extends BaseEntity {
-    @Column(name = "boardroom_id")
-    private Long boardroomId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "boardroom_id")
+    private Boardroom boardroom;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

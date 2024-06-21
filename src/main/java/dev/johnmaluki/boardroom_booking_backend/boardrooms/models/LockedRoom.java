@@ -1,9 +1,7 @@
 package dev.johnmaluki.boardroom_booking_backend.boardrooms.models;
 
 import dev.johnmaluki.boardroom_booking_backend.core.models.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -15,8 +13,9 @@ import lombok.experimental.SuperBuilder;
 @Entity
 @Table(name="locked_boardrooms")
 public class LockedRoom extends BaseEntity {
-    @Column(name = "boardroom_id")
-    private Long boardroomId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "boardroom_id")
+    private Boardroom boardroom;
 
     @Builder.Default
     @Column(name = "locked")

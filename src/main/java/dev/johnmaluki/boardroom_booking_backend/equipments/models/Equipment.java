@@ -1,10 +1,8 @@
 package dev.johnmaluki.boardroom_booking_backend.equipments.models;
 
+import dev.johnmaluki.boardroom_booking_backend.boardrooms.models.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.core.models.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Lob;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -39,7 +37,8 @@ public class Equipment extends BaseEntity {
     @Column(name = "brand")
     private String brand;
 
-    @Column(name = "boardroom_id")
-    private Long boardroomId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "boardroom_id")
+    private Boardroom boardroom;
 
 }

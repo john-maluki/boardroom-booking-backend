@@ -19,6 +19,8 @@ public class Role extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private RoleType authority = RoleType.USER;
 
-    @Column(name = "user_id")
-    private Long userId;
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private AppUser user;
 }

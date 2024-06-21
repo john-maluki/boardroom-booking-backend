@@ -17,7 +17,7 @@ import java.util.UUID;
 @MappedSuperclass
 public abstract class BaseEntity extends AuditableAndDeletable<Long> {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "tag", unique = true, nullable = false)
