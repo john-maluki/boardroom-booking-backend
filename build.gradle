@@ -25,6 +25,7 @@ dependencies {
 	implementation 'org.springframework.security:spring-security-ldap'
 	implementation 'org.springframework.ldap:spring-ldap-core'
 	implementation 'com.unboundid:unboundid-ldapsdk'
+	implementation 'net.datafaker:datafaker:2.2.2'
 	runtimeOnly 'com.h2database:h2'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
