@@ -1,4 +1,4 @@
-package dev.johnmaluki.boardroom_booking_backend.user.service;
+package dev.johnmaluki.boardroom_booking_backend.config.security;
 
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.model.Role;
@@ -24,19 +24,19 @@ import java.util.Optional;
 @Component
 public class UserPrincipalDetailService implements UserDetailsService {
 
-    private final LdapTemplate ldapTemplate;
+    @Setter
+    private LdapTemplate ldapTemplate;
     private final AppUserRepository userRepository;
     private final UserUtil userUtil;
 
-    public UserPrincipalDetailService(LdapTemplate ldapTemplate, AppUserRepository userRepository, UserUtil userUtil) {
-        this.ldapTemplate = ldapTemplate;
+    public UserPrincipalDetailService(AppUserRepository userRepository, UserUtil userUtil) {
         this.userRepository = userRepository;
         this.userUtil = userUtil;
     }
 
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    public UserPrincipal loadUserByUsername(String username) throws UsernameNotFoundException {
         EqualsFilter filter = new EqualsFilter("uid", username);
         List<LdapUserDetail> users = ldapTemplate.search("", filter.encode(), new UserAttributesMapper());
         if (users.isEmpty()){
@@ -49,14 +49,16 @@ public class UserPrincipalDetailService implements UserDetailsService {
             userPrincipal.setPassword(ldapUserDetail.getPassword());
             return userPrincipal;
         } else {
+            Role role = Role.builder()
+                    .authority(RoleType.USER)
+                    .build();
             AppUser user = AppUser.builder()
                     .username(ldapUserDetail.getUsername())
                     .email("email@test.com")
                     .timeZone(userUtil.getDefaultUserTimeZone())
-                    .role(Role.builder()
-                            .authority(RoleType.USER)
-                            .build())
+                    .role(role)
                     .build();
+            role.setUser(user);
             user = userRepository.save(user);
             UserPrincipal userPrincipal = new UserPrincipal(user);
             userPrincipal.setPassword(ldapUserDetail.getPassword());
@@ -85,4 +87,5 @@ public class UserPrincipalDetailService implements UserDetailsService {
         private String password;
 
     }
+
 }
