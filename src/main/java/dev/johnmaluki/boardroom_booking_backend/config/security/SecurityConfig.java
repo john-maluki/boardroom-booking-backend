@@ -2,10 +2,13 @@ package dev.johnmaluki.boardroom_booking_backend.config.security;
 
 import dev.johnmaluki.boardroom_booking_backend.config.security.filter.BoardroomUsernamePasswordAuthenticationFilter;
 import dev.johnmaluki.boardroom_booking_backend.config.security.filter.JwtAuthenticationFilter;
+import dev.johnmaluki.boardroom_booking_backend.config.security.filter.RefreshTokenAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.http.HttpMethod;
 import org.springframework.ldap.core.LdapTemplate;
 import org.springframework.ldap.core.support.LdapContextSource;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,6 +34,7 @@ public class SecurityConfig {
     private final UserPrincipalDetailService userPrincipalDetailService;
     private final JwtService jwtService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RefreshTokenAuthenticationFilter refreshTokenAuthenticationFilter;
 
     @DependsOn("authenticationManager")
     @Bean
@@ -44,9 +48,10 @@ public class SecurityConfig {
                 .addFilterAt(boardroomUsernamePasswordFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, BoardroomUsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/h2-console/**", "/login/**", "/auth/**").permitAll()
+                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
                         .requestMatchers("/boardrooms/**")
-                        .hasAnyAuthority("USER")
+                        .hasAnyAuthority("USER", "ADMIN")
                         .anyRequest().authenticated()
 
                 );
@@ -85,5 +90,13 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
         return this.authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public FilterRegistrationBean<RefreshTokenAuthenticationFilter> refreshTokenFilter () {
+        FilterRegistrationBean<RefreshTokenAuthenticationFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(refreshTokenAuthenticationFilter);
+        registrationBean.addUrlPatterns("/auth/refresh-token"); // Apply to the custom URL pattern
+        return registrationBean;
     }
 }

@@ -3,7 +3,6 @@ package dev.johnmaluki.boardroom_booking_backend;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.BoardroomContact;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.LockedRoom;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomContactRepository;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomRepository;
 import dev.johnmaluki.boardroom_booking_backend.equipment.model.Equipment;
 import dev.johnmaluki.boardroom_booking_backend.equipment.repository.EquipmentRepository;
@@ -14,9 +13,11 @@ import dev.johnmaluki.boardroom_booking_backend.user.model.Role;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.RoleRepository;
 import dev.johnmaluki.boardroom_booking_backend.util.*;
+import lombok.RequiredArgsConstructor;
 import net.datafaker.Faker;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -26,7 +27,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+@Profile("dev")
 @Component
+@RequiredArgsConstructor
 public class DumbDataGenerator implements ApplicationRunner {
     private static final List<RoleType> ROLE_TYPES = Arrays.asList(
             RoleType.ADMIN,
@@ -37,17 +40,27 @@ public class DumbDataGenerator implements ApplicationRunner {
             RoleType.USER
 
     );
-    private static final List<MeetingType> MEETTING_TYPE = Arrays.asList(
+    private static final List<MeetingType> MEETING_TYPE = Arrays.asList(
             MeetingType.HYBRID,
             MeetingType.PHYSICAL,
             MeetingType.VIRTUAL
     );
+    private static final List<String> USERNAMES = Arrays.asList(
+            "ben", "bob", "joe"
+    );
+    private static final List<Long> BOARDROOMS_IDS = Arrays.asList(
+            1L, 2L, 3L
+    );
+
+    private static final List<Long> USERS_IDS = Arrays.asList(
+            1L, 2L, 3L
+    );
+
 
     private final AppUserRepository userRepository;
     private final RoleRepository roleRepository;
     private final BoardroomRepository boardroomRepository;
     private final ReservationRepository reservationRepository;
-    private final BoardroomContactRepository boardroomContactRepository;
     private final EquipmentRepository equipmentRepository;
 
 
@@ -56,24 +69,14 @@ public class DumbDataGenerator implements ApplicationRunner {
     private final UserUtil userUtil;
     private final Random random = new Random();
 
-    public DumbDataGenerator(AppUserRepository userRepository, RoleRepository roleRepository, BoardroomRepository boardroomRepository, ReservationRepository reservationRepository, BoardroomContactRepository boardroomContactRepository, EquipmentRepository equipmentRepository, Faker faker, UserUtil userUtil) {
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.boardroomRepository = boardroomRepository;
-        this.reservationRepository = reservationRepository;
-        this.boardroomContactRepository = boardroomContactRepository;
-        this.equipmentRepository = equipmentRepository;
-        this.faker = faker;
-        this.userUtil = userUtil;
-    }
 
     public void createUsers() {
         var users = new ArrayList<AppUser>();
-        for (long i = 1; i <= 10; i++) {
+        for (int i = 0; i <= 2; i++) {
             AppUser user = AppUser.builder().email(faker.internet()
                             .emailAddress())
                     .department(faker.company().industry())
-                    .username(faker.internet().username())
+                    .username(USERNAMES.get(i))
                     .timeZone(userUtil.getDefaultUserTimeZone())
                     .build();
             users.add(user);
@@ -83,8 +86,8 @@ public class DumbDataGenerator implements ApplicationRunner {
 
     public void createUserRole() {
         var roles = new ArrayList<Role>();
-        for (long i = 1; i <= 10; i++) {
-            AppUser user = userRepository.findById(i).get();
+        for (long i = 1; i <= 3; i++) {
+            AppUser user = userRepository.findById(i).orElseThrow();
             int index = random.nextInt(DumbDataGenerator.ROLE_TYPES.size());
             RoleType roleType = DumbDataGenerator.ROLE_TYPES.get(index);
             Role role = Role.builder()
@@ -99,8 +102,8 @@ public class DumbDataGenerator implements ApplicationRunner {
 
     public void createBoardrooms(){
         var boardrooms = new ArrayList<Boardroom>();
-        for (long i = 1; i <= 10; i++) {
-            AppUser user = userRepository.findById(i).get();
+        for (long i = 1; i <= 3; i++) {
+            AppUser user = userRepository.findById(i).orElseThrow();
             BoardroomContact boardroomContact = BoardroomContact.builder()
                     .communicationMethod(CommunicationLineType.PHONE_EXTENSION)
                     .contact(faker.phoneNumber().toString())
@@ -133,11 +136,15 @@ public class DumbDataGenerator implements ApplicationRunner {
 
     public void createReservations(){
         var reservations = new ArrayList<Reservation>();
-        for (long i = 1; i <= 10; i++) {
-            Boardroom boardroom = boardroomRepository.findById(i).get();
-            AppUser user = userRepository.findById(i).get();
-            int index = random.nextInt(DumbDataGenerator.MEETTING_TYPE.size());
-            MeetingType meetingType = DumbDataGenerator.MEETTING_TYPE.get(index);
+        for (long i = 1; i <= 50; i++) {
+            int boardRoomIndex = random.nextInt(DumbDataGenerator.BOARDROOMS_IDS.size());
+            long boardroomId = DumbDataGenerator.BOARDROOMS_IDS.get(boardRoomIndex);
+            Boardroom boardroom = boardroomRepository.findById(boardroomId).orElseThrow();
+            int userIndex = random.nextInt(DumbDataGenerator.USERS_IDS.size());
+            long userId = DumbDataGenerator.USERS_IDS.get(userIndex);
+            AppUser user = userRepository.findById(userId).orElseThrow();
+            int index = random.nextInt(DumbDataGenerator.MEETING_TYPE.size());
+            MeetingType meetingType = DumbDataGenerator.MEETING_TYPE.get(index);
             LocalDate startDate = faker.date().birthday().toLocalDateTime().toLocalDate();
             LocalDate endDate = startDate.plusDays(faker.number().numberBetween(1, 30));
             LocalTime startTime = LocalTime.of(faker.number().numberBetween(0, 23), faker.number().numberBetween(0, 59));
@@ -162,8 +169,10 @@ public class DumbDataGenerator implements ApplicationRunner {
 
     public void createBoardroomEquipment() {
         var equipments = new ArrayList<Equipment>();
-        for (long i = 1; i <= 10; i++) {
-            Boardroom boardroom = boardroomRepository.findById(i).get();
+        for (long i = 1; i <= 20; i++) {
+            int boardRoomIndex = random.nextInt(DumbDataGenerator.BOARDROOMS_IDS.size());
+            long boardroomId = DumbDataGenerator.BOARDROOMS_IDS.get(boardRoomIndex);
+            Boardroom boardroom = boardroomRepository.findById(boardroomId).orElseThrow();
             Equipment equipment = Equipment.builder()
                     .boardroom(boardroom)
                     .title(faker.text().text(5, 15))
@@ -179,7 +188,7 @@ public class DumbDataGenerator implements ApplicationRunner {
     }
 
     @Override
-    public void run(ApplicationArguments args) throws Exception {
+    public void run(ApplicationArguments args)  {
         createUsers();
         createUserRole();
         createBoardrooms();

@@ -71,8 +71,9 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
             Authentication authResult) throws IOException, ServletException {
         UserPrincipal userPrincipal = (UserPrincipal) authResult.getPrincipal();
         Map<String, Object> claim = new HashMap<>();
-        claim.put("roles", userPrincipal.getAuthorities());
+        claim.put("role", userPrincipal.getUser().getRole().getAuthority());
         String accessToken = jwtService.generateToken(userPrincipal.getUsername(), claim);
+        String refreshToken = jwtService.generateRefreshToken(userPrincipal.getUsername());
 
         Cookie cookie = new Cookie("access_token", accessToken);
         cookie.setHttpOnly(true);
@@ -84,6 +85,7 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
 
         Map<String, String> tokens = new HashMap<>();
         tokens.put("access_token", accessToken);
+        tokens.put("refresh_token", refreshToken);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         new ObjectMapper().writeValue(response.getOutputStream(), tokens);
     }
