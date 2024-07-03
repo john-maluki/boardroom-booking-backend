@@ -2,12 +2,14 @@ package dev.johnmaluki.boardroom_booking_backend.config.security.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.johnmaluki.boardroom_booking_backend.config.security.JwtService;
+import dev.johnmaluki.boardroom_booking_backend.config.security.LdapService;
 import dev.johnmaluki.boardroom_booking_backend.config.security.UserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,6 +29,8 @@ import java.util.Map;
 public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    @Setter
+    private LdapService ldapService;
 
     public BoardroomUsernamePasswordAuthenticationFilter(AuthenticationManager authenticationManager, JwtService jwtService) {
         this.authenticationManager = authenticationManager;
@@ -47,6 +51,9 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
         } catch (RuntimeException | IOException e) {
             throw new AuthenticationServiceException(e.getMessage(), e);
         }
+        System.out.println(password);
+        boolean isUserInActiveDirectory = ldapService.authenticateUserFromActiveDirectory(username, password);
+        System.out.println("user is in AD: " + isUserInActiveDirectory);
 
         UsernamePasswordAuthenticationToken authRequest = new UsernamePasswordAuthenticationToken(
                 username, password, Collections.emptyList());

@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.ldap.core.AttributesMapper;
 import org.springframework.ldap.core.LdapTemplate;
 import org.springframework.ldap.filter.EqualsFilter;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
@@ -24,20 +23,20 @@ import javax.naming.directory.Attributes;
 import java.util.List;
 import java.util.Optional;
 
-@Profile("prod")
+@Profile("dev")
 @Component
 @RequiredArgsConstructor
-public class UserPrincipalDetailService implements AppUserDetailsService {
+public class UserPrincipalDetailServiceDev implements AppUserDetailsService {
+
     private LdapTemplate ldapTemplate;
     private final AppUserRepository userRepository;
     private final UserUtil userUtil;
 
+
     @Override
     public UserPrincipal loadUserByUsername(String username) throws UsernameNotFoundException {
-        EqualsFilter filter = new EqualsFilter("sAMAccountName", username);
+        EqualsFilter filter = new EqualsFilter("uid", username);
         List<LdapUserDetail> users = ldapTemplate.search("", filter.encode(), new UserAttributesMapper());
-        System.out.println("check this " + users.get(0).getUsername());
-        System.out.println("password" + users.get(0).getPassword());
         if (users.isEmpty()){
             throw new UsernameNotFoundException("user not found");
         }
@@ -64,10 +63,6 @@ public class UserPrincipalDetailService implements AppUserDetailsService {
             return userPrincipal;
         }
 
-//        List<String> users =searchUser(username);
-//        System.out.println(users);
-//        return null;
-
     }
 
     @Override
@@ -75,28 +70,15 @@ public class UserPrincipalDetailService implements AppUserDetailsService {
         this.ldapTemplate = ldapTemplate;
     }
 
-    private static class UserAttributesMapper implements AttributesMapper<UserPrincipalDetailService.LdapUserDetail> {
+    private static class UserAttributesMapper implements AttributesMapper<LdapUserDetail> {
         @Override
-        public UserPrincipalDetailService.LdapUserDetail mapFromAttributes(Attributes attrs) throws NamingException {
-            return UserPrincipalDetailService.LdapUserDetail.builder()
-                    .username((String) attrs.get("cn").get())
-//                    .password(new String((byte[]) attrs.get("userPassword").get()))
-                    .build();
+        public LdapUserDetail mapFromAttributes(Attributes attrs) throws NamingException {
+            return LdapUserDetail.builder()
+                    .username((String) attrs.get("uid").get())
+                    .password(new String((byte[]) attrs.get("userPassword").get()))
+                            .build();
         }
-
-
     }
-
-//    public List<String> searchUser(String username) {
-//        String searchFilter = "(&(objectClass=user)(sAMAccountName=" + username + "))";
-//        ldapTemplate.setIgnorePartialResultException(true);
-//        return ldapTemplate.search("", searchFilter, new AttributesMapper<String>() {
-//            @Override
-//            public String mapFromAttributes(Attributes attrs) throws NamingException {
-//                return attrs.get("DN").get().toString();
-//            }
-//        });
-//    }
 
     @Getter
     @Setter
@@ -106,4 +88,5 @@ public class UserPrincipalDetailService implements AppUserDetailsService {
         private String password;
 
     }
+
 }
