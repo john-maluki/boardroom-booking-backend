@@ -43,7 +43,7 @@ public class SecurityConfig {
                 .addFilterAt(boardroomUsernamePasswordFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, BoardroomUsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/", "/h2-console/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
                         .requestMatchers("/v3/api-docs/", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         .requestMatchers("/boardrooms/**")
