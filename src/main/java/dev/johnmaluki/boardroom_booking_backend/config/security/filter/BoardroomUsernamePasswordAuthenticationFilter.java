@@ -51,9 +51,9 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
         } catch (RuntimeException | IOException e) {
             throw new AuthenticationServiceException(e.getMessage(), e);
         }
-        System.out.println(password);
-        boolean isUserInActiveDirectory = ldapService.authenticateUserFromActiveDirectory(username, password);
-        System.out.println("user is in AD: " + isUserInActiveDirectory);
+//        System.out.println(password);
+//        boolean isUserInActiveDirectory = ldapService.authenticateUserFromActiveDirectory(username, password);
+//        System.out.println("user is in AD: " + isUserInActiveDirectory);
 
         UsernamePasswordAuthenticationToken authRequest = new UsernamePasswordAuthenticationToken(
                 username, password, Collections.emptyList());

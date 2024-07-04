@@ -46,8 +46,8 @@ public class SecurityConfig {
                         .requestMatchers("/", "/h2-console/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
                         .requestMatchers("/v3/api-docs/", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
-                        .requestMatchers("/boardrooms/**")
-                        .hasAnyAuthority("USER", "ADMIN")
+                        .requestMatchers("/boardrooms/**").hasAnyAuthority("USER", "ADMIN")
+                        .requestMatchers("/reservations/**").hasAnyAuthority("USER", "ADMIN")
                         .anyRequest().authenticated()
 
                 );
