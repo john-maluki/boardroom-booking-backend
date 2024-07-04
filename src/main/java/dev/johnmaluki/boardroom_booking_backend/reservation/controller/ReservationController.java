@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -19,5 +20,12 @@ public class ReservationController {
     @GetMapping("/reservations")
     public ResponseEntity<List<ReservationResponseDto>> getAllReservations(){
         return ResponseEntity.ok(reservationService.getAllReservations());
+    }
+
+    @GetMapping("/reservation/{id}")
+    public ResponseEntity<ReservationResponseDto> getReservationById(
+            @PathVariable("id") long id
+    ) {
+        return ResponseEntity.ok(reservationService.getReservationById(id));
     }
 }

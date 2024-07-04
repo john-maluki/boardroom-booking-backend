@@ -1,5 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.reservation.service.impl;
 
+import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationRepository;
@@ -16,5 +17,14 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public List<ReservationResponseDto> getAllReservations() {
         return reservationMapper.toReservationResponseDtoList(reservationRepository.findAll());
+    }
+
+    @Override
+    public ReservationResponseDto getReservationById(long id) {
+        return reservationMapper.toReservationResponseDto(
+                reservationRepository.findById(id).orElseThrow(
+                        () -> new ResourceNotFoundException("Resource could not be found")
+                )
+        );
     }
 }

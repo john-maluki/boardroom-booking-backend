@@ -5,5 +5,6 @@ import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationRespo
 import java.util.List;
 
 public interface ReservationService {
-    public List<ReservationResponseDto> getAllReservations();
+    List<ReservationResponseDto> getAllReservations();
+    ReservationResponseDto getReservationById(long id);
 }
