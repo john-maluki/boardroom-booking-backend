@@ -30,7 +30,7 @@ public class Boardroom extends BaseEntity {
     private int capacity;
 
     @Lob
-    @Column(name = "picture")
+    @Column(name = "picture", columnDefinition = "BLOB")
     private byte[] picture;
 
     @Column(name = "description", length = 300, nullable = false)

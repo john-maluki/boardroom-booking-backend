@@ -118,7 +118,7 @@ public class DumbDataGenerator implements ApplicationRunner {
                     .description(faker.text().text(100))
                     .email(faker.internet().emailAddress())
                     .picture(faker.internet().image().getBytes())
-                    .meetingTypeSupported(faker.text().text(10))
+                    .meetingTypeSupported("physical,virtual,hybrid")
                     .build();
             boardroom.addBoardroomContact(boardroomContact);
             boardrooms.add(boardroom);

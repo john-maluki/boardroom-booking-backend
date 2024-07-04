@@ -4,5 +4,5 @@ import lombok.*;
 
 @Builder
 public record BoardroomResponseDto(String name, String email, String centre, String department,
-                                   String meetingTypeSupported, boolean internetEnabled, boolean locked) {
+                                   String meetingTypeSupported, String picture, boolean internetEnabled, boolean locked, String tag) {
 }

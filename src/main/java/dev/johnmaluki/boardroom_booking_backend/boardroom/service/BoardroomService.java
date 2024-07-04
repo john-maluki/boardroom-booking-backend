@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface BoardroomService {
     List<BoardroomResponseDto> getAllBoardrooms();
+    BoardroomResponseDto getBoardroomById(long tag);
 }
