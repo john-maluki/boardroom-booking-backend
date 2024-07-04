@@ -11,6 +11,7 @@ import java.util.List;
 public class BoardroomMapper {
     public BoardroomResponseDto toBoardroomResponseDto(Boardroom boardroom) {
         return BoardroomResponseDto.builder()
+                .id(boardroom.getId())
                 .email(boardroom.getEmail())
                 .name(boardroom.getName())
                 .locked(boardroom.isLocked())
