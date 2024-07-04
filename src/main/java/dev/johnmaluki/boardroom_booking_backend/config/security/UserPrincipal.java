@@ -50,4 +50,8 @@ public class UserPrincipal implements UserDetails {
         return this.user.getId();
     }
 
+    public String getUserTimeZone() {
+        return this.user.getTimeZone();
+    }
+
 }
