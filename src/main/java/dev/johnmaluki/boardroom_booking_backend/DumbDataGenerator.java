@@ -129,6 +129,7 @@ public class DumbDataGenerator implements ApplicationRunner {
         LockedRoom lockedRoom = LockedRoom.builder()
                 .givenReason("The room is being renovated")
                 .build();
+        boardroom.setLocked(true);
         boardroom.addLockedBoardroom(lockedRoom);
 
         boardroomRepository.saveAll(boardrooms);

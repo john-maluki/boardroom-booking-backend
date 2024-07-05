@@ -39,11 +39,11 @@ import java.time.LocalDateTime;
 public abstract class AuditableAndDeletable<T> extends Archival{
     @CreatedDate
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAT;
+    private LocalDateTime createdAt;
 
     @LastModifiedDate
     @Column(name = "updated_at")
-    private LocalDateTime updatedAT;
+    private LocalDateTime updatedAt;
 
     @CreatedBy
     @Column(name = "created_by")
@@ -51,7 +51,7 @@ public abstract class AuditableAndDeletable<T> extends Archival{
 
     @LastModifiedBy
     @Column(name = "updated_by")
-    private T updatedBY;
+    private T updatedBy;
 
     @Builder.Default
     private Boolean deleted = false;

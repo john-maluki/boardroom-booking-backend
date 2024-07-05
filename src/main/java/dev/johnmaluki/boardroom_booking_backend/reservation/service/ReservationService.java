@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface ReservationService {
     List<ReservationResponseDto> getAllReservations();
-    ReservationResponseDto getReservationById(long id);
+    ReservationResponseDto getReservationById(long boardroomId);
 }
