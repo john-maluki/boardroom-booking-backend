@@ -18,6 +18,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class BoardroomServiceImpl implements BoardroomService {
+    public static final String RESOURCE_NOT_FOUND = "Resource not found";
     private final BoardroomRepository boardroomRepository;
     private final LockedRoomRepository lockedRoomRepository;
     private final BoardroomMapper boardroomMapper;
@@ -29,22 +30,21 @@ public class BoardroomServiceImpl implements BoardroomService {
     @Override
     public BoardroomResponseDto getBoardroomById(long boardroomId) {
         return boardroomMapper.toBoardroomResponseDto(boardroomRepository.findById(boardroomId).orElseThrow(
-                () -> new ResourceNotFoundException("Resource not found")));
+                () -> new ResourceNotFoundException(RESOURCE_NOT_FOUND)));
     }
 
     @Override
     public LockedBoardroomResponseDto getLockedBoardroomReasonById(long boardroomId) {
-        Optional<Boardroom> boardroomOptional = boardroomRepository.findById(boardroomId);
-        if (boardroomOptional.isPresent()) {
-            List<LockedRoom> lockedRooms = lockedRoomRepository.findAllByBoardroomAndLockedTrueOrderByCreatedAtDesc(
-                    boardroomOptional.get());
+        boolean boardroomExists = boardroomRepository.existsById(boardroomId);
+        if (boardroomExists) {
+            List<LockedRoom> lockedRooms = lockedRoomRepository.getLockedRoomByBoardroomId(boardroomId);
             if (lockedRooms.isEmpty()) {
-                throw new ResourceNotFoundException("Resource not found");
+                throw new ResourceNotFoundException(RESOURCE_NOT_FOUND);
             } else {
                 return boardroomMapper.toLockedBoardroomResponseDto(lockedRooms.get(0));
             }
         } else {
-            throw new ResourceNotFoundException("Resource not found");
+            throw new ResourceNotFoundException(RESOURCE_NOT_FOUND);
         }
     }
 
