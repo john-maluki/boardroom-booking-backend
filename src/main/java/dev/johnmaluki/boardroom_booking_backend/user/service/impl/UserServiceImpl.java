@@ -1,5 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.user.service.impl;
 
+import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
@@ -18,6 +19,15 @@ public class UserServiceImpl implements UserService {
     public List<UserResponseDto> getAllUsers() {
         return userMapper.toUserResponseDtoList(
                 userRepository.findAll()
+        );
+    }
+
+    @Override
+    public UserResponseDto getUserId(long userId) {
+        return userMapper.toUserResponseDto(
+                userRepository.findById(userId).orElseThrow(
+                        () -> new ResourceNotFoundException("Resource not found")
+                )
         );
     }
 }
