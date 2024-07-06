@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/boardrooms/**").hasAnyAuthority("USER", "ADMIN")
                         .requestMatchers("/reservations/**").hasAnyAuthority("USER", "ADMIN")
                         .requestMatchers("/equipments/**").hasAnyAuthority("USER", "ADMIN")
+                        .requestMatchers("/users/**").hasAnyAuthority("USER", "ADMIN")
                         .anyRequest().authenticated()
 
                 );
