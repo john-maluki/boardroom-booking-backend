@@ -38,4 +38,9 @@ public class ReservationController {
     public ResponseEntity<List<ReservationResponseDto>> getLiveMeetings() {
         return ResponseEntity.ok(reservationService.getAllLiveMeetings());
     }
+
+    @GetMapping("/archived-reservations")
+    public ResponseEntity<List<ReservationResponseDto>> getArchivedReservations() {
+        return ResponseEntity.ok(reservationService.getArchivedReservations());
+    }
 }

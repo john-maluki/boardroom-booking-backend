@@ -18,4 +18,5 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "(:currentDate > e.startDate OR (:currentDate = e.startDate AND :currentTime >= e.startTime)) AND " +
             "(:currentDate < e.endDate OR (:currentDate = e.endDate AND :currentTime <= e.endTime))")
     List<Reservation> findLiveMeetings(@Param("currentDate") LocalDate currentDate, @Param("currentTime") LocalTime currentTime);
+    List<Reservation> findByArchivedTrueAndDeletedFalse();
 }
