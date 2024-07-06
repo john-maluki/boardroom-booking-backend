@@ -3,7 +3,6 @@ package dev.johnmaluki.boardroom_booking_backend.boardroom.service.impl;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomMapper;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.LockedRoom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomRepository;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.LockedRoomRepository;
@@ -13,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor

@@ -28,4 +28,9 @@ public class ReservationController {
     ) {
         return ResponseEntity.ok(reservationService.getReservationById(id));
     }
+
+    @GetMapping("/upcoming-reservations")
+    public ResponseEntity<List<ReservationResponseDto>> getUpcomingReservations() {
+        return ResponseEntity.ok(reservationService.getUpcomingReservations());
+    }
 }

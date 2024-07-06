@@ -8,6 +8,8 @@ import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationS
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 @Service
 @RequiredArgsConstructor
@@ -17,6 +19,15 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public List<ReservationResponseDto> getAllReservations() {
         return reservationMapper.toReservationResponseDtoList(reservationRepository.findAll());
+    }
+
+    @Override
+    public List<ReservationResponseDto> getUpcomingReservations() {
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+        return reservationMapper.toReservationResponseDtoList(
+                reservationRepository.findByStartDateAndStartTimeGreaterThan(today, now)
+        );
     }
 
     @Override
