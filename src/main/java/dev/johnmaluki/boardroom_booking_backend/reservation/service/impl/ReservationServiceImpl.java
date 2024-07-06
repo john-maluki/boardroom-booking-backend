@@ -41,6 +41,14 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
+    public List<ReservationResponseDto> getBoardroomReservations(long boardroomId) {
+        List<ReservationResponseDto> reservationResponseDtoList = this.getAllReservations();
+        return reservationResponseDtoList.stream().filter(
+                reservationResponseDto -> reservationResponseDto.boardroomId() == boardroomId
+        ).toList();
+    }
+
+    @Override
     public ReservationResponseDto getReservationById(long id) {
         return reservationMapper.toReservationResponseDto(
                 reservationRepository.findById(id).orElseThrow(
