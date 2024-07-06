@@ -3,6 +3,7 @@ package dev.johnmaluki.boardroom_booking_backend.reservation.service.impl;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
+import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
 import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationRepository;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,15 @@ public class ReservationServiceImpl implements ReservationService {
         LocalTime now = LocalTime.now();
         return reservationMapper.toReservationResponseDtoList(
                 reservationRepository.findByStartDateAndStartTimeGreaterThan(today, now)
+        );
+    }
+
+    @Override
+    public List<ReservationResponseDto> getAllLiveMeetings() {
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+        return reservationMapper.toReservationResponseDtoList(
+                reservationRepository.findLiveMeetings(today, now)
         );
     }
 

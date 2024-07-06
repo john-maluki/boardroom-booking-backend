@@ -33,4 +33,9 @@ public class ReservationController {
     public ResponseEntity<List<ReservationResponseDto>> getUpcomingReservations() {
         return ResponseEntity.ok(reservationService.getUpcomingReservations());
     }
+
+    @GetMapping("/live-meetings")
+    public ResponseEntity<List<ReservationResponseDto>> getLiveMeetings() {
+        return ResponseEntity.ok(reservationService.getAllLiveMeetings());
+    }
 }
