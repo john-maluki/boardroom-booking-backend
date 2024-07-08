@@ -14,6 +14,7 @@ public class BoardroomMapper {
     public BoardroomResponseDto toBoardroomResponseDto(Boardroom boardroom) {
         return BoardroomResponseDto.builder()
                 .id(boardroom.getId())
+                .capacity(boardroom.getCapacity())
                 .email(boardroom.getEmail())
                 .name(boardroom.getName())
                 .locked(boardroom.isLocked())
@@ -23,6 +24,7 @@ public class BoardroomMapper {
                 .tag(boardroom.getTag())
                 .picture(Base64.getEncoder().encodeToString(boardroom.getPicture()))
                 .meetingTypeSupported(boardroom.getMeetingTypeSupported())
+                .hasOngoingMeeting(boardroom.isHasOngoingMeeting())
                 .build();
     }
 

@@ -165,6 +165,18 @@ public class DumbDataGenerator implements ApplicationRunner {
                     .build();
             reservations.add(reservation);
         }
+
+        for (int i = 0; i <=5; i++) {
+            LocalDate startDate = LocalDate.now();
+            LocalDate endDate = LocalDate.now();
+            LocalTime startTime = LocalTime.now().minusHours(2);
+            LocalTime endTime = startTime.plusHours(faker.number().numberBetween(1, 5));
+            Reservation reservation = reservations.get(i);
+            reservation.setStartDate(startDate);
+            reservation.setStartTime(startTime);
+            reservation.setEndDate(endDate);
+            reservation.setEndTime(endTime);
+        }
         reservationRepository.saveAll(reservations);
     }
 

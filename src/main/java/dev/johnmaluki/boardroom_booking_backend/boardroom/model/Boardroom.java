@@ -53,6 +53,9 @@ public class Boardroom extends BaseEntity {
     @Column(name = "locked", nullable = false)
     private boolean locked = false;
 
+    @Transient
+    private boolean hasOngoingMeeting;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "administrator_id")
     private AppUser administrator;

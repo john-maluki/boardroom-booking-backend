@@ -21,4 +21,13 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Reservation> findLiveMeetings(@Param("currentDate") LocalDate currentDate, @Param("currentTime") LocalTime currentTime);
     List<Reservation> findByArchivedTrueAndDeletedFalse();
     Optional<Reservation> findByIdAndArchivedFalseAndDeletedFalse(long id);
+
+    @Query("SELECT e.boardroom.id, COUNT(e.id) > 0 " +
+            "FROM Reservation e " +
+            "WHERE (:currentDate > e.startDate OR (:currentDate = e.startDate AND :currentTime >= e.startTime)) " +
+            "AND (:currentDate < e.endDate OR (:currentDate = e.endDate AND :currentTime <= e.endTime)) " +
+            "AND archived = false " +
+            "AND deleted = false " +
+            "GROUP BY e.boardroom.id")
+    List<Object[]> findBoardroomOngoingMeetingStatus(@Param("currentDate") LocalDate currentDate, @Param("currentTime") LocalTime currentTime);
 }

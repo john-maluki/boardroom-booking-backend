@@ -17,13 +17,18 @@ import dev.johnmaluki.boardroom_booking_backend.equipment.mapper.EquipmentMapper
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
+import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
 import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +36,7 @@ public class BoardroomServiceImpl implements BoardroomService {
     public static final String RESOURCE_NOT_FOUND = "Resource not found";
     private final CurrentUserService currentUserService;
     private final BoardroomRepository boardroomRepository;
+    private final ReservationRepository reservationRepository;
     private final BoardroomMapper boardroomMapper;
     private final EquipmentMapper equipmentMapper;
     private final UserMapper userMapper;
@@ -38,14 +44,24 @@ public class BoardroomServiceImpl implements BoardroomService {
     private final ReservationMapper reservationMapper;
     @Override
     public List<BoardroomResponseDto> getAllBoardrooms() {
-        return boardroomMapper.toBoardroomResponseDtoList(
-                boardroomRepository.findByArchivedFalseAndDeletedFalse()
-        );
+        Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
+        List<Boardroom> boardrooms = boardroomRepository.findByArchivedFalseAndDeletedFalse();
+        for (Boardroom boardroom : boardrooms) {
+            boardroom.setHasOngoingMeeting(boardroomOnGoingMeetingStatuses.getOrDefault(
+                    boardroom.getId(), false
+            ));
+        }
+        return boardroomMapper.toBoardroomResponseDtoList(boardrooms);
     }
 
     @Override
     public BoardroomResponseDto getBoardroomById(long boardroomId) {
-        return boardroomMapper.toBoardroomResponseDto(this.getBoardroomByIdFromDb(boardroomId));
+        Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        boardroom.setHasOngoingMeeting(boardroomOnGoingMeetingStatuses.getOrDefault(
+                boardroom.getId(), false
+        ));
+        return boardroomMapper.toBoardroomResponseDto(boardroom);
     }
 
     @Override
@@ -118,6 +134,17 @@ public class BoardroomServiceImpl implements BoardroomService {
     private Boardroom getBoardroomByIdFromDb(long boardroomId) {
         return boardroomRepository.findByIdAndArchivedFalseAndDeletedFalse(boardroomId).orElseThrow(
                 () -> new ResourceNotFoundException(RESOURCE_NOT_FOUND));
+    }
+
+    private Map<Long, Boolean> getOngoingMeetingStatuses() {
+        LocalDate currentDate = LocalDate.now();
+        LocalTime currentTime = LocalTime.now();
+        List<Object[]> ongoingMeetingStatus = reservationRepository.findBoardroomOngoingMeetingStatus(currentDate, currentTime);
+        return ongoingMeetingStatus.stream()
+                .collect(Collectors.toMap(
+                        status -> (Long) status[0],
+                        status -> (Boolean) status[1]
+                ));
     }
 
 }
