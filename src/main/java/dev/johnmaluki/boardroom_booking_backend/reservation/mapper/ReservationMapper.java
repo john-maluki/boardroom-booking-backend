@@ -29,6 +29,7 @@ public class ReservationMapper {
                 .startTime(zonedDateTimeStart.toLocalTime())
                 .endTime(zonedDateTimeEnd.toLocalTime())
                 .boardroomId(reservation.getBoardroom().getId())
+                .userId(reservation.getUser().getId())
                 .tag(reservation.getTag())
                 .build();
     }

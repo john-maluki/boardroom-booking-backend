@@ -9,6 +9,6 @@ import java.time.LocalTime;
 
 @Builder
 public record ReservationResponseDto(long id, String meetingTitle, String meetingDescription, MeetingType meetingType,
-                                     String attendees, long boardroomId, ApprovalStatus approvalStatus,
+                                     String attendees, long boardroomId, long userId, ApprovalStatus approvalStatus,
                                      LocalDate startDate, LocalDate endDate, LocalTime startTime, LocalTime endTime, String tag) {
 }

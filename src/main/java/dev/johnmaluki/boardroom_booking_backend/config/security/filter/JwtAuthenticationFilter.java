@@ -3,6 +3,7 @@ package dev.johnmaluki.boardroom_booking_backend.config.security.filter;
 import com.unboundid.util.NotNull;
 import dev.johnmaluki.boardroom_booking_backend.config.security.JwtService;
 import dev.johnmaluki.boardroom_booking_backend.config.security.UserPrincipal;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.JwtTokenException;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
 import jakarta.servlet.FilterChain;
@@ -29,7 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             @NotNull HttpServletRequest request,
             @NotNull HttpServletResponse response,
-            @NotNull FilterChain filterChain) throws ServletException, IOException {
+            @NotNull FilterChain filterChain) throws ServletException, IOException{
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         final String jwtToken;
         final String username;
@@ -40,7 +41,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         jwtToken = authHeader.substring(7);
-        username = jwtService.extractUsername(jwtToken);
+        try {
+            username = jwtService.extractUsername(jwtToken);
+        } catch (JwtTokenException e) {
+            throw new JwtTokenException(e.getMessage());
+        }
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             Optional<AppUser> userOptional = userRepository.findByUsername(username);
             if (userOptional.isPresent()) {

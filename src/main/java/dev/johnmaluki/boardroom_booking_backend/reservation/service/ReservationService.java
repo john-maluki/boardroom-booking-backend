@@ -20,6 +20,5 @@ public interface ReservationService {
      */
     List<ReservationResponseDto> getAllLiveMeetings();
     List<ReservationResponseDto> getArchivedReservations();
-    List<ReservationResponseDto> getBoardroomReservations(long boardroomId);
     ReservationResponseDto getReservationById(long boardroomId);
 }

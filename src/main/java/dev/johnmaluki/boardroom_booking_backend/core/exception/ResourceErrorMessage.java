@@ -4,5 +4,5 @@ import lombok.Builder;
 import org.springframework.http.HttpStatus;
 
 @Builder
-public record ResourceNotFoundErrorMessage(String message, Throwable throwable, HttpStatus httpStatus) {
+public record ResourceErrorMessage(String message, Throwable throwable, HttpStatus httpStatus) {
 }

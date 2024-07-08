@@ -20,11 +20,4 @@ public class EquipmentServiceImpl implements EquipmentService {
         );
     }
 
-    @Override
-    public List<EquipmentResponseDto> getBoardroomEquipments(long boardroomId) {
-        List<EquipmentResponseDto> equipmentResponseDtoList = this.getAllEquipments();
-        return equipmentResponseDtoList.stream().filter(
-                equipmentResponseDto -> equipmentResponseDto.boardroomId() == boardroomId
-                ).toList();
-    }
 }
