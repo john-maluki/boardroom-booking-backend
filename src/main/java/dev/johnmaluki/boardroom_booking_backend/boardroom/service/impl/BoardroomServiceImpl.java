@@ -71,6 +71,16 @@ public class BoardroomServiceImpl implements BoardroomService {
         return equipmentMapper.toEquipmentResponseDtoList(boardroom.getEquipments());
     }
 
+    @Override
+    public List<ReservationResponseDto> getBoardroomArchivedReservations(long boardroomId) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        return reservationMapper.toReservationResponseDtoList(
+                this.filterReservationByUser(boardroom).stream()
+                        .filter(reservation -> reservation.getArchived() && !reservation.getDeleted())
+                        .toList()
+        );
+    }
+
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {
         long userId = currentUserService.getUserId();
         long boardroomAdminId = boardroom.getAdministrator().getId();

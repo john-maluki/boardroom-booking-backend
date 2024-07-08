@@ -34,6 +34,13 @@ public class BoardroomController {
         return ResponseEntity.ok(boardroomService.getBoardroomReservations(boardroomId));
     }
 
+    @GetMapping("/boardrooms/{boardroomId}/archived-reservations")
+    public ResponseEntity<List<ReservationResponseDto>> getBoardroomsArchivedReservations(
+            @PathVariable("boardroomId") long boardroomId
+    ) {
+        return ResponseEntity.ok(boardroomService.getBoardroomArchivedReservations(boardroomId));
+    }
+
     @GetMapping("/boardrooms/{boardroomId}")
     public ResponseEntity<BoardroomResponseDto> getBoardroomById(@PathVariable("boardroomId") long boardroomId) {
         return ResponseEntity.ok(boardroomService.getBoardroomById(boardroomId));

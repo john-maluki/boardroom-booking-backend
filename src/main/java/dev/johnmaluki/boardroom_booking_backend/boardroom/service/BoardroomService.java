@@ -13,4 +13,5 @@ public interface BoardroomService {
     LockedBoardroomResponseDto getLockedBoardroomReasonById(long boardroomId);
     List<ReservationResponseDto> getBoardroomReservations(long boardroomId);
     List<EquipmentResponseDto> getBoardroomEquipments(long boardroomId);
+    List<ReservationResponseDto> getBoardroomArchivedReservations(long boardroomId);
 }
