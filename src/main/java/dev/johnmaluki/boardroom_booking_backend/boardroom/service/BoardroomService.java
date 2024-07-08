@@ -4,6 +4,7 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseD
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 
 import java.util.List;
 
@@ -14,4 +15,5 @@ public interface BoardroomService {
     List<ReservationResponseDto> getBoardroomReservations(long boardroomId);
     List<EquipmentResponseDto> getBoardroomEquipments(long boardroomId);
     List<ReservationResponseDto> getBoardroomArchivedReservations(long boardroomId);
+    UserResponseDto getBoardroomAdministrator(long boardroomId);
 }

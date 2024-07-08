@@ -6,6 +6,7 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServi
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationService;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +52,12 @@ public class BoardroomController {
         return ResponseEntity.ok(boardroomService.getBoardroomEquipments(boardroomId));
     }
 
-    @GetMapping("/boardrooms/{boardroomId}/locked")
+    @GetMapping("/boardrooms/{boardroomId}/administrator")
+    public ResponseEntity<UserResponseDto> getBoardroomAdministrator(@PathVariable("boardroomId") long boardroomId) {
+        return ResponseEntity.ok(boardroomService.getBoardroomAdministrator(boardroomId));
+    }
+
+    @GetMapping("/boardrooms/{boardroomId}/locked-message")
     public ResponseEntity<LockedBoardroomResponseDto> getLockedBoardroomReasonById(
             @PathVariable("boardroomId") long boardroomId
     ) {

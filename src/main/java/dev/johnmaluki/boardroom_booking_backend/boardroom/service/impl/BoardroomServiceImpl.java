@@ -15,6 +15,8 @@ import dev.johnmaluki.boardroom_booking_backend.equipment.mapper.EquipmentMapper
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
 import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class BoardroomServiceImpl implements BoardroomService {
     private final BoardroomRepository boardroomRepository;
     private final BoardroomMapper boardroomMapper;
     private final EquipmentMapper equipmentMapper;
+    private final UserMapper userMapper;
     private final ReservationMapper reservationMapper;
     @Override
     public List<BoardroomResponseDto> getAllBoardrooms() {
@@ -79,6 +82,12 @@ public class BoardroomServiceImpl implements BoardroomService {
                         .filter(reservation -> reservation.getArchived() && !reservation.getDeleted())
                         .toList()
         );
+    }
+
+    @Override
+    public UserResponseDto getBoardroomAdministrator(long boardroomId) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        return userMapper.toUserResponseDto(boardroom.getAdministrator());
     }
 
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {
