@@ -1,5 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.controller;
 
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
@@ -55,6 +56,11 @@ public class BoardroomController {
     @GetMapping("/boardrooms/{boardroomId}/administrator")
     public ResponseEntity<UserResponseDto> getBoardroomAdministrator(@PathVariable("boardroomId") long boardroomId) {
         return ResponseEntity.ok(boardroomService.getBoardroomAdministrator(boardroomId));
+    }
+
+    @GetMapping("/boardrooms/{boardroomId}/contacts")
+    public ResponseEntity<List<BoardroomContactResponseDto>> getBoardroomContacts(@PathVariable("boardroomId") long boardroomId) {
+        return ResponseEntity.ok(boardroomService.getBoardroomContacts(boardroomId));
     }
 
     @GetMapping("/boardrooms/{boardroomId}/locked-message")

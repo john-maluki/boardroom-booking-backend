@@ -1,7 +1,9 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.service.impl;
 
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomContactMapper;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomMapper;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.LockedRoom;
@@ -32,6 +34,7 @@ public class BoardroomServiceImpl implements BoardroomService {
     private final BoardroomMapper boardroomMapper;
     private final EquipmentMapper equipmentMapper;
     private final UserMapper userMapper;
+    private final BoardroomContactMapper boardroomContactMapper;
     private final ReservationMapper reservationMapper;
     @Override
     public List<BoardroomResponseDto> getAllBoardrooms() {
@@ -88,6 +91,16 @@ public class BoardroomServiceImpl implements BoardroomService {
     public UserResponseDto getBoardroomAdministrator(long boardroomId) {
         Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
         return userMapper.toUserResponseDto(boardroom.getAdministrator());
+    }
+
+    @Override
+    public List<BoardroomContactResponseDto> getBoardroomContacts(long boardroomId) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        return boardroomContactMapper.toBoardroomContactResponseDtoList(
+                boardroom.getBoardroomContacts().stream()
+                        .filter(boardroomContact -> !boardroomContact.getArchived() && !boardroomContact.getDeleted())
+                        .toList()
+        );
     }
 
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {
