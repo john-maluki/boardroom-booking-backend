@@ -1,5 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.mapper;
 
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
@@ -22,9 +23,24 @@ public class BoardroomMapper {
                 .department(boardroom.getDepartment())
                 .internetEnabled(boardroom.isInternetEnabled())
                 .tag(boardroom.getTag())
+                .description(boardroom.getDescription())
                 .picture(Base64.getEncoder().encodeToString(boardroom.getPicture()))
                 .meetingTypeSupported(boardroom.getMeetingTypeSupported())
                 .hasOngoingMeeting(boardroom.isHasOngoingMeeting())
+                .build();
+    }
+
+    public Boardroom toBoardroom(BoardroomDto boardroomDto) {
+        return Boardroom.builder()
+                .capacity(boardroomDto.capacity())
+                .email(boardroomDto.email())
+                .name(boardroomDto.name())
+                .centre(boardroomDto.centre())
+                .department(boardroomDto.department())
+                .description(boardroomDto.description())
+                .internetEnabled(boardroomDto.internetEnabled())
+                .picture(Base64.getDecoder().decode(boardroomDto.description()))
+                .meetingTypeSupported(boardroomDto.meetingTypeSupported())
                 .build();
     }
 

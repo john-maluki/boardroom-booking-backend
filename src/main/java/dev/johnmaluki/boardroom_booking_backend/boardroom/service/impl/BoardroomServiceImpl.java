@@ -1,6 +1,7 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.service.impl;
 
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomContactMapper;
@@ -9,6 +10,7 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.LockedRoom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomRepository;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.DuplicateResourceException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.service.CurrentUserService;
 import dev.johnmaluki.boardroom_booking_backend.core.util.DataFilterUtil;
@@ -22,6 +24,8 @@ import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
 import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -32,6 +36,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BoardroomServiceImpl implements BoardroomService {
     public static final String RESOURCE_NOT_FOUND = "Resource not found";
     private final CurrentUserService currentUserService;
@@ -117,6 +122,18 @@ public class BoardroomServiceImpl implements BoardroomService {
                         .filter(boardroomContact -> !boardroomContact.getArchived() && !boardroomContact.getDeleted())
                         .toList()
         );
+    }
+
+    @Override
+    public BoardroomResponseDto createBoardroom(BoardroomDto boardroomDto) {
+        try {
+            Boardroom boardroom = boardroomMapper.toBoardroom(boardroomDto);
+            return boardroomMapper.toBoardroomResponseDto(
+                    boardroomRepository.save(boardroom)
+            );
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateResourceException("Resource already exists.");
+        }
     }
 
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {

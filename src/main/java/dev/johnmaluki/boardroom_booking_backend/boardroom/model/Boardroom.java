@@ -23,7 +23,7 @@ public class Boardroom extends BaseEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "email")
+    @Column(name = "email", unique = true)
     private String email;
 
     @Column(name = "capacity", nullable = false)

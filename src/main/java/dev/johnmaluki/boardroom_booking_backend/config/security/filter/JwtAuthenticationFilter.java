@@ -41,11 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         jwtToken = authHeader.substring(7);
-        try {
-            username = jwtService.extractUsername(jwtToken);
-        } catch (JwtTokenException e) {
-            throw new JwtTokenException(e.getMessage());
-        }
+        username = jwtService.extractUsername(jwtToken);
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             Optional<AppUser> userOptional = userRepository.findByUsername(username);
             if (userOptional.isPresent()) {

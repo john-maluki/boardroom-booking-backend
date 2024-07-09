@@ -19,7 +19,7 @@ public class AuditorAwareImpl implements AuditorAware<Long> {
             return Optional.empty();
         }
 
-        UserPrincipal userPrincipal = (UserPrincipal) authentication;
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
         return Optional.of(userPrincipal.getUserId());
     }
 }

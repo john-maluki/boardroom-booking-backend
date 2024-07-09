@@ -4,11 +4,12 @@ import lombok.*;
 
 @Builder
 public record BoardroomResponseDto(
-        long id,
+        Long id,
         String name,
-        long capacity,
+        int capacity,
         String email,
         String centre,
+        String description,
         String department,
         String meetingTypeSupported,
         String picture,

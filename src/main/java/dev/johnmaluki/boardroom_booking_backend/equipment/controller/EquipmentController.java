@@ -3,6 +3,7 @@ package dev.johnmaluki.boardroom_booking_backend.equipment.controller;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.service.EquipmentService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import java.util.List;
 @RestController
 @SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
+@Tag(name = "Equipment")
 public class EquipmentController {
     private final EquipmentService equipmentService;
 

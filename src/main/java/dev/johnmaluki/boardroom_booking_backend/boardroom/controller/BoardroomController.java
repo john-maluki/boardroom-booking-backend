@@ -1,6 +1,7 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.controller;
 
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
@@ -8,18 +9,21 @@ import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseD
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationService;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
+@Tag(name = "Boardroom")
 public class BoardroomController {
     private final BoardroomService boardroomService;
     private final ReservationService reservationService;
@@ -68,5 +72,13 @@ public class BoardroomController {
             @PathVariable("boardroomId") long boardroomId
     ) {
         return ResponseEntity.ok(boardroomService.getLockedBoardroomReasonById(boardroomId));
+    }
+
+    @PostMapping("/boardrooms")
+    @Operation(summary = "Create a new boardroom")
+    public ResponseEntity<BoardroomResponseDto> createBoardroom(
+            @RequestBody @Valid BoardroomDto boardroomDto
+    ) {
+        return new ResponseEntity<>(boardroomService.createBoardroom(boardroomDto), HttpStatus.CREATED);
     }
 }
