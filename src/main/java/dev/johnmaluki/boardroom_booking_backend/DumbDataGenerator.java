@@ -46,14 +46,14 @@ public class DumbDataGenerator implements ApplicationRunner {
             MeetingType.VIRTUAL
     );
     private static final List<String> USERNAMES = Arrays.asList(
-            "ben", "bob", "joe"
+            "ben", "bob", "joe", "slashguy"
     );
     private static final List<Long> BOARDROOMS_IDS = Arrays.asList(
             1L, 2L, 3L
     );
 
     private static final List<Long> USERS_IDS = Arrays.asList(
-            1L, 2L, 3L
+            1L, 2L, 3L, 4L
     );
 
 
@@ -72,7 +72,7 @@ public class DumbDataGenerator implements ApplicationRunner {
 
     public void createUsers() {
         var users = new ArrayList<AppUser>();
-        for (int i = 0; i <= 2; i++) {
+        for (int i = 0; i <= 3; i++) {
             AppUser user = AppUser.builder().email(faker.internet()
                             .emailAddress())
                     .department(faker.company().industry())
@@ -86,7 +86,7 @@ public class DumbDataGenerator implements ApplicationRunner {
 
     public void createUserRole() {
         var roles = new ArrayList<Role>();
-        for (long i = 1; i <= 3; i++) {
+        for (long i = 1; i <= 4; i++) {
             AppUser user = userRepository.findById(i).orElseThrow();
             int index = random.nextInt(DumbDataGenerator.ROLE_TYPES.size());
             RoleType roleType = DumbDataGenerator.ROLE_TYPES.get(index);

@@ -1,9 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.service.impl;
 
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomDto;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomContactMapper;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomMapper;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
@@ -22,7 +19,10 @@ import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
 import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
+import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
+import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
 import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -32,6 +32,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,6 +43,7 @@ public class BoardroomServiceImpl implements BoardroomService {
     private final CurrentUserService currentUserService;
     private final BoardroomRepository boardroomRepository;
     private final ReservationRepository reservationRepository;
+    private final AppUserRepository userRepository;
     private final BoardroomMapper boardroomMapper;
     private final EquipmentMapper equipmentMapper;
     private final UserMapper userMapper;
@@ -111,7 +113,10 @@ public class BoardroomServiceImpl implements BoardroomService {
     @Override
     public UserResponseDto getBoardroomAdministrator(long boardroomId) {
         Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        return userMapper.toUserResponseDto(boardroom.getAdministrator());
+        AppUser user = Optional.ofNullable(boardroom.getAdministrator()).orElseThrow(
+                () -> new ResourceNotFoundException("Boardroom contains no administrator")
+        );
+        return userMapper.toUserResponseDto(user);
     }
 
     @Override
@@ -131,6 +136,20 @@ public class BoardroomServiceImpl implements BoardroomService {
             return boardroomMapper.toBoardroomResponseDto(
                     boardroomRepository.save(boardroom)
             );
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateResourceException("Resource already exists.");
+        }
+    }
+
+    @Override
+    @Transactional
+    public UserResponseDto createBoardroomAdministrator(long boardroomId, BoardroomAdminDto boardroomAdminDto) {
+        try {
+            Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+            AppUser user = this.getAppUserByIdFromDb(boardroomAdminDto.userId());
+            boardroom.setAdministrator(user);
+            user.setBoardroom(boardroom);
+            return userMapper.toUserResponseDto(user);
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateResourceException("Resource already exists.");
         }
@@ -162,6 +181,11 @@ public class BoardroomServiceImpl implements BoardroomService {
                         status -> (Long) status[0],
                         status -> (Boolean) status[1]
                 ));
+    }
+
+    private AppUser getAppUserByIdFromDb(long userId) {
+        return userRepository.findByIdAndArchivedFalseAndDeletedFalse(userId).orElseThrow(
+                () -> new ResourceNotFoundException(RESOURCE_NOT_FOUND));
     }
 
 }

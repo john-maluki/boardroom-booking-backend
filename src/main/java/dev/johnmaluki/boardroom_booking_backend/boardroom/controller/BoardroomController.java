@@ -1,9 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.controller;
 
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomDto;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
@@ -80,5 +77,17 @@ public class BoardroomController {
             @RequestBody @Valid BoardroomDto boardroomDto
     ) {
         return new ResponseEntity<>(boardroomService.createBoardroom(boardroomDto), HttpStatus.CREATED);
+    }
+
+    @PostMapping("/boardrooms/{boardroomId}/administrator")
+    @Operation(summary = "Create boardroom administrator")
+    public ResponseEntity<UserResponseDto> createBoardroomAdministrator(
+            @PathVariable("boardroomId") long boardroomId,
+            @RequestBody @Valid BoardroomAdminDto boardroomAdminDto
+            ) {
+        return new ResponseEntity<>(
+                boardroomService.createBoardroomAdministrator(boardroomId, boardroomAdminDto),
+                HttpStatus.CREATED
+        );
     }
 }

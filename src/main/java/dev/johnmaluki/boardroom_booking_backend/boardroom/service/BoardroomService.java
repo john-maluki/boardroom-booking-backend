@@ -1,9 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.service;
 
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomDto;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
@@ -20,4 +17,5 @@ public interface BoardroomService {
     UserResponseDto getBoardroomAdministrator(long boardroomId);
     List<BoardroomContactResponseDto> getBoardroomContacts(long boardroomId);
     BoardroomResponseDto createBoardroom(BoardroomDto boardroomDto);
+    UserResponseDto createBoardroomAdministrator(long boardroomId, BoardroomAdminDto boardroomAdminDto);
 }
