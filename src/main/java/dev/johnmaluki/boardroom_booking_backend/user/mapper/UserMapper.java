@@ -1,6 +1,7 @@
 package dev.johnmaluki.boardroom_booking_backend.user.mapper;
 
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,14 @@ public class UserMapper {
 
     public List<UserResponseDto> toUserResponseDtoList(List<AppUser> users) {
         return users.stream().map(this::toUserResponseDto).toList();
+    }
+
+    public List<UserTimezoneResponseDto> toUserTimezoneResponseDtoList(List<String> zoneIds) {
+        return zoneIds.stream().map(
+                z -> UserTimezoneResponseDto.builder()
+                        .timezone(z)
+                        .build()
+        ).toList();
     }
 
 }

@@ -1,7 +1,9 @@
 package dev.johnmaluki.boardroom_booking_backend.user.controller;
 
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,12 @@ public class UserController {
             @PathVariable("userId") long userId
     ) {
         return  ResponseEntity.ok(userService.getUserId(userId));
+    }
+
+    @GetMapping("/user-timezones")
+    @Operation(summary = "Fetch user timezones")
+    public ResponseEntity<List<UserTimezoneResponseDto>> getUserTimezones() {
+        return  ResponseEntity.ok(userService.getUserTimezones());
     }
 
 }

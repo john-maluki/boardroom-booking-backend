@@ -6,11 +6,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @EnableJpaAuditing(auditorAwareRef = "auditorProvider")
 @SpringBootApplication
-//@ComponentScan("com.unboundid")
 public class BoardroomBookingBackendApplication {
-
 	public static void main(String[] args) {
 		SpringApplication.run(BoardroomBookingBackendApplication.class, args);
 	}
-
 }
