@@ -8,4 +8,5 @@ import java.util.List;
 public interface EquipmentService {
     List<EquipmentResponseDto> getAllEquipments();
     EquipmentResponseDto createEquipment(EquipmentDto equipmentDto);
+    void removeEquipment(long equipmentId);
 }

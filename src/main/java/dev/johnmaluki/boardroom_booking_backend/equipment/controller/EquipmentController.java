@@ -3,17 +3,17 @@ package dev.johnmaluki.boardroom_booking_backend.equipment.controller;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.service.EquipmentService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @SecurityRequirement(name = "bearerAuth")
@@ -32,5 +32,14 @@ public class EquipmentController {
             @RequestBody @Valid EquipmentDto equipmentDto
             ) {
         return ResponseEntity.ok(equipmentService.createEquipment(equipmentDto));
+    }
+
+    @DeleteMapping("/equipments/{equipmentId}")
+    @Operation(summary = "Delete the equipment")
+    public ResponseEntity<Void> deleteEquipment(
+            @PathVariable("equipmentId") long equipmentId
+    ) {
+        equipmentService.removeEquipment(equipmentId);
+        return ResponseEntity.noContent().build();
     }
 }
