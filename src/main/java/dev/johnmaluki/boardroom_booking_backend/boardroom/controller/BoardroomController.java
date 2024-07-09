@@ -90,4 +90,13 @@ public class BoardroomController {
                 HttpStatus.CREATED
         );
     }
+
+    @PostMapping("/boardrooms/{boardroomId}/contacts")
+    @Operation(summary = "Create a boardroom contact")
+    public ResponseEntity<BoardroomContactResponseDto> createBoardroomContact(
+            @PathVariable("boardroomId") long boardroomId,
+            @RequestBody @Valid BoardroomContactDto boardroomContactDto
+    ) {
+        return ResponseEntity.ok(boardroomService.createBoardroomContact(boardroomId, boardroomContactDto));
+    }
 }

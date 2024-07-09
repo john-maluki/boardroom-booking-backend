@@ -4,7 +4,9 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomContactMapper;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomMapper;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.model.BoardroomContact;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.LockedRoom;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomContactRepository;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomRepository;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServiceUtil;
@@ -45,6 +47,7 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     private final BoardroomRepository boardroomRepository;
     private final ReservationRepository reservationRepository;
     private final AppUserRepository userRepository;
+    private final BoardroomContactRepository boardroomContactRepository;
     private final BoardroomMapper boardroomMapper;
     private final EquipmentMapper equipmentMapper;
     private final UserMapper userMapper;
@@ -154,6 +157,15 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateResourceException("Resource already exists.");
         }
+    }
+
+    @Override
+    public BoardroomContactResponseDto createBoardroomContact(long boardroomId, BoardroomContactDto boardroomContactDto) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        BoardroomContact boardroomContact = boardroomContactMapper.toBoardroomContact(boardroomContactDto);
+        boardroom.addBoardroomContact(boardroomContact);
+        boardroomContact = boardroomContactRepository.save(boardroomContact);
+        return boardroomContactMapper.toBoardroomContactResponseDto(boardroomContact);
     }
 
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {

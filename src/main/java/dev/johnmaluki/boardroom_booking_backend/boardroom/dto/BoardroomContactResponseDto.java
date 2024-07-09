@@ -6,5 +6,6 @@ import lombok.Builder;
 public record BoardroomContactResponseDto(
         long id,
         String contact,
+        long boardroomId,
         String tag
 ) {}
