@@ -1,6 +1,7 @@
 package dev.johnmaluki.boardroom_booking_backend.equipment.mapper;
 
 
+import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.model.Equipment;
 import org.springframework.stereotype.Component;
@@ -27,5 +28,16 @@ public class EquipmentMapper {
 
     public List<EquipmentResponseDto> toEquipmentResponseDtoList(List<Equipment> equipments) {
         return equipments.stream().map(this::toEquipmentResponseDto).toList();
+    }
+
+   public Equipment toEquipment(EquipmentDto equipmentDto) {
+        return Equipment.builder()
+                .title(equipmentDto.title())
+                .description(equipmentDto.description())
+                .modelNumber(equipmentDto.modelNumber())
+                .videoUrl(equipmentDto.videoUrl())
+                .picture(Base64.getDecoder().decode(equipmentDto.picture()))
+                .brand(equipmentDto.brand())
+                .build();
     }
 }

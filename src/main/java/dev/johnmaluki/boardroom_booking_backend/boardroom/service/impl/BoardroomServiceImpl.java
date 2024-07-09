@@ -7,6 +7,7 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.LockedRoom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomRepository;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServiceUtil;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.DuplicateResourceException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.service.CurrentUserService;
@@ -38,7 +39,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class BoardroomServiceImpl implements BoardroomService {
+public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceUtil {
     public static final String RESOURCE_NOT_FOUND = "Resource not found";
     private final CurrentUserService currentUserService;
     private final BoardroomRepository boardroomRepository;
@@ -188,4 +189,8 @@ public class BoardroomServiceImpl implements BoardroomService {
                 () -> new ResourceNotFoundException(RESOURCE_NOT_FOUND));
     }
 
+    @Override
+    public Boardroom findBoardroomById(long boardroomId) {
+        return this.getBoardroomByIdFromDb(boardroomId);
+    }
 }
