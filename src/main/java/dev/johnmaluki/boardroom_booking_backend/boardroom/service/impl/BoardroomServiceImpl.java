@@ -8,6 +8,7 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.model.BoardroomContact
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.LockedRoom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomContactRepository;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomRepository;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.LockedRoomRepository;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServiceUtil;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.DuplicateResourceException;
@@ -47,6 +48,7 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     private final BoardroomRepository boardroomRepository;
     private final ReservationRepository reservationRepository;
     private final AppUserRepository userRepository;
+    private final LockedRoomRepository lockedRoomRepository;
     private final BoardroomContactRepository boardroomContactRepository;
     private final BoardroomMapper boardroomMapper;
     private final EquipmentMapper equipmentMapper;
@@ -77,15 +79,9 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
 
     @Override
     public LockedBoardroomResponseDto getLockedBoardroomReasonById(long boardroomId) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        List<LockedRoom> lockedRooms = new DataFilterUtil<LockedRoom>().removeArchivedAndDeletedRecords(
-                boardroom.getLockedRooms()
-        );
-        if (lockedRooms.isEmpty()) {
-            throw new ResourceNotFoundException(RESOURCE_NOT_FOUND);
-        } else {
-            return boardroomMapper.toLockedBoardroomResponseDto(lockedRooms.get(0));
-        }
+        LockedRoom lockedRoom = this.getLockedRoomByBoardroomId(boardroomId);
+        return boardroomMapper.toLockedBoardroomResponseDto(lockedRoom);
+
     }
 
     @Override
@@ -178,6 +174,31 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
         this.deleteBoardroomContactSoftly(boardroomId, contactId);
     }
 
+    @Override
+    public LockedBoardroomResponseDto lockBoardroomById(long boardroomId, LockMessageDto lockMessageDto) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        LockedRoom lockedRoom = LockedRoom.builder()
+                .locked(true)
+                .givenReason(lockMessageDto.givenReason())
+                .build();
+        boardroom.setLocked(true);
+        LockedRoom savedLockedRoom = lockedRoomRepository.getByBoardroomAndLockedTrueAndArchivedFalseAndDeletedFalse(boardroom)
+                .orElse(lockedRoom);
+        savedLockedRoom.setGivenReason(lockMessageDto.givenReason());
+        boardroom.addLockedBoardroom(savedLockedRoom);
+        return boardroomMapper.toLockedBoardroomResponseDto(
+                lockedRoomRepository.save(savedLockedRoom)
+        );
+    }
+
+    @Override
+    public void unLockBoardroomById(long boardroomId) {
+        LockedRoom lockedRoom = this.getLockedRoomByBoardroomId(boardroomId);
+        lockedRoom.setLocked(false);
+        lockedRoom.getBoardroom().setLocked(false);
+        lockedRoomRepository.save(lockedRoom);
+    }
+
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {
         long userId = currentUserService.getUserId();
         long boardroomAdminId = boardroom.getAdministrator().getId();
@@ -235,5 +256,11 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
             boardroomRepository.save(boardroom);
         }
 
+    }
+
+    private LockedRoom getLockedRoomByBoardroomId(long boardroomId) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        return lockedRoomRepository.getByBoardroomAndLockedTrueAndArchivedFalseAndDeletedFalse(boardroom)
+                .orElseThrow(() -> new ResourceNotFoundException("Locked room not found"));
     }
 }

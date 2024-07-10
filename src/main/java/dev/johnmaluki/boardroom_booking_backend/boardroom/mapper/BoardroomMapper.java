@@ -51,7 +51,7 @@ public class BoardroomMapper {
 
     public LockedBoardroomResponseDto toLockedBoardroomResponseDto(LockedRoom lockedRoom){
         return LockedBoardroomResponseDto.builder()
-                .boardroomId(lockedRoom.getId())
+                .boardroomId(lockedRoom.getBoardroom().getId())
                 .givenReason(lockedRoom.getGivenReason())
                 .build();
     }

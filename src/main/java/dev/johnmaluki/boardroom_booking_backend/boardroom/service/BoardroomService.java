@@ -21,4 +21,6 @@ public interface BoardroomService {
     BoardroomContactResponseDto createBoardroomContact(long boardroomId, BoardroomContactDto boardroomContactDto);
     void removeBoardroomById(long boardroomId);
     void removeBoardroomContact(long boardroomId, long contactId);
+    LockedBoardroomResponseDto lockBoardroomById(long boardroomId, LockMessageDto lockMessageDto);
+    void unLockBoardroomById(long boardroomId);
 }

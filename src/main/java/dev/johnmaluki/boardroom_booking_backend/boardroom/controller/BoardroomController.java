@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @SecurityRequirement(name = "bearerAuth")
@@ -64,7 +65,7 @@ public class BoardroomController {
         return ResponseEntity.ok(boardroomService.getBoardroomContacts(boardroomId));
     }
 
-    @GetMapping("/boardrooms/{boardroomId}/locked-message")
+    @GetMapping("/boardrooms/{boardroomId}/lock-message")
     public ResponseEntity<LockedBoardroomResponseDto> getLockedBoardroomReasonById(
             @PathVariable("boardroomId") long boardroomId
     ) {
@@ -115,5 +116,23 @@ public class BoardroomController {
     ) {
         boardroomService.removeBoardroomContact(boardroomId, contactId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/boardrooms/{boardroomId}/lock-message")
+    @Operation(summary = "Lock boardroom. Provide lock message")
+    public ResponseEntity<LockedBoardroomResponseDto> lockBoardroomById(
+            @PathVariable("boardroomId") long boardroomId,
+            @RequestBody @Valid LockMessageDto lockMessageDto
+    ) {
+        return ResponseEntity.ok(boardroomService.lockBoardroomById(boardroomId, lockMessageDto));
+    }
+
+    @PatchMapping("/boardrooms/{boardroomId}/unlock")
+    @Operation(summary = "Unlock boardroom")
+    public ResponseEntity<Map<String, String>> unLockBoardroomReason(
+            @PathVariable("boardroomId") long boardroomId
+    ) {
+        boardroomService.unLockBoardroomById(boardroomId);
+        return ResponseEntity.ok(Map.of("message", "unlocked successfully"));
     }
 }
