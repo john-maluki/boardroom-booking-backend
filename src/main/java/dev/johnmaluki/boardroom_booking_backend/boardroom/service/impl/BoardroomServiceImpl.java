@@ -168,6 +168,11 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
         return boardroomContactMapper.toBoardroomContactResponseDto(boardroomContact);
     }
 
+    @Override
+    public void removeBoardroomById(long boardroomId) {
+        this.deleteBoardroomSoftly(boardroomId);
+    }
+
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {
         long userId = currentUserService.getUserId();
         long boardroomAdminId = boardroom.getAdministrator().getId();
@@ -204,5 +209,11 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     @Override
     public Boardroom findBoardroomById(long boardroomId) {
         return this.getBoardroomByIdFromDb(boardroomId);
+    }
+
+    private void deleteBoardroomSoftly(long boardroomId) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        boardroom.setDeleted(true);
+        boardroomRepository.save(boardroom);
     }
 }

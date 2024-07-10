@@ -19,4 +19,5 @@ public interface BoardroomService {
     BoardroomResponseDto createBoardroom(BoardroomDto boardroomDto);
     UserResponseDto createBoardroomAdministrator(long boardroomId, BoardroomAdminDto boardroomAdminDto);
     BoardroomContactResponseDto createBoardroomContact(long boardroomId, BoardroomContactDto boardroomContactDto);
+    void removeBoardroomById(long boardroomId);
 }

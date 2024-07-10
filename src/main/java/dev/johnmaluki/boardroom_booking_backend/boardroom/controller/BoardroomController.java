@@ -99,4 +99,11 @@ public class BoardroomController {
     ) {
         return ResponseEntity.ok(boardroomService.createBoardroomContact(boardroomId, boardroomContactDto));
     }
+
+    @DeleteMapping("/boardrooms/{boardroomId}")
+    @Operation(summary = "Delete boardroom")
+    public ResponseEntity<Void> deleteBoardroomById(@PathVariable("boardroomId") long boardroomId) {
+        boardroomService.removeBoardroomById(boardroomId);
+        return ResponseEntity.noContent().build();
+    }
 }
