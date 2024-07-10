@@ -34,6 +34,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -205,12 +206,26 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
             long contactId,
             BoardroomContactDto boardroomContactDto
     ) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
         BoardroomContact boardroomContact = boardroomContactRepository.getContactRecord(contactId, boardroomId);
-        System.out.println(boardroomContact);
         boardroomContact.setContact(boardroomContactDto.contact());
         return boardroomContactMapper.toBoardroomContactResponseDto(
                 boardroomContactRepository.save(boardroomContact)
+        );
+    }
+
+    @Override
+    public BoardroomResponseDto updateBoardroomById(long boardroomId, BoardroomDto boardroomDto) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        boardroom.setName(boardroomDto.name());
+        boardroom.setCentre(boardroomDto.centre());
+        boardroom.setDepartment(boardroomDto.department());
+        boardroom.setCapacity(boardroomDto.capacity());
+        boardroom.setDescription(boardroomDto.description());
+        boardroom.setInternetEnabled(boardroomDto.internetEnabled());
+        boardroom.setEmail(boardroomDto.email());
+        boardroom.setMeetingTypeSupported(boardroomDto.meetingTypeSupported());
+        boardroom.setPicture(Base64.getDecoder().decode(boardroomDto.picture()));
+        return boardroomMapper.toBoardroomResponseDto(boardroomRepository.save(boardroom)
         );
     }
 

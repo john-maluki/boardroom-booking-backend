@@ -50,6 +50,15 @@ public class BoardroomController {
         return ResponseEntity.ok(boardroomService.getBoardroomById(boardroomId));
     }
 
+    @PatchMapping("/boardrooms/{boardroomId}")
+    @Operation(summary = "Update boardroom")
+    public ResponseEntity<BoardroomResponseDto> updateBoardroomById(
+            @PathVariable("boardroomId") long boardroomId,
+            @RequestBody @Valid BoardroomDto boardroomDto
+    ) {
+        return ResponseEntity.ok(boardroomService.updateBoardroomById(boardroomId, boardroomDto));
+    }
+
     @GetMapping("/boardrooms/{boardroomId}/equipments")
     public ResponseEntity<List<EquipmentResponseDto>> getBoardroomEquipments(@PathVariable("boardroomId") long boardroomId) {
         return ResponseEntity.ok(boardroomService.getBoardroomEquipments(boardroomId));
