@@ -2,8 +2,10 @@ package dev.johnmaluki.boardroom_booking_backend.user.service.impl;
 
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
+import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -27,9 +29,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponseDto getUserId(long userId) {
         return userMapper.toUserResponseDto(
-                userRepository.findById(userId).orElseThrow(
-                        () -> new ResourceNotFoundException("Resource not found")
-                )
+                this.getUserFromDb(userId)
         );
     }
 
@@ -37,5 +37,18 @@ public class UserServiceImpl implements UserService {
     public List<UserTimezoneResponseDto> getUserTimezones() {
         List<String> zoneIds = ZoneId.getAvailableZoneIds().stream().sorted().toList();
         return userMapper.toUserTimezoneResponseDtoList(zoneIds);
+    }
+
+    @Override
+    public UserResponseDto changeUserTimezone(long userId, UserTimezoneDto userTimezoneDto) {
+        AppUser user = this.getUserFromDb(userId);
+        user.setTimeZone(userTimezoneDto.userTimezone());
+        return userMapper.toUserResponseDto(userRepository.save(user));
+    }
+
+    private AppUser getUserFromDb(long userId){
+        return userRepository.findByIdAndArchivedFalseAndDeletedFalse(userId).orElseThrow(
+                () -> new ResourceNotFoundException("User not found")
+        );
     }
 }

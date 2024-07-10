@@ -1,16 +1,16 @@
 package dev.johnmaluki.boardroom_booking_backend.user.controller;
 
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -37,6 +37,15 @@ public class UserController {
     @Operation(summary = "Fetch user timezones")
     public ResponseEntity<List<UserTimezoneResponseDto>> getUserTimezones() {
         return  ResponseEntity.ok(userService.getUserTimezones());
+    }
+
+    @PatchMapping("/users/{userId}")
+    @Operation(summary = "Update user timezone")
+    public ResponseEntity<UserResponseDto> updateUserTimezone(
+            @PathVariable("userId") long userId,
+            @RequestBody @Valid UserTimezoneDto userTimezoneDto
+    ) {
+        return  ResponseEntity.ok(userService.changeUserTimezone(userId, userTimezoneDto));
     }
 
 }
