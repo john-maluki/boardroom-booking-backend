@@ -199,6 +199,21 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
         lockedRoomRepository.save(lockedRoom);
     }
 
+    @Override
+    public BoardroomContactResponseDto updateBoardroomContact(
+            long boardroomId,
+            long contactId,
+            BoardroomContactDto boardroomContactDto
+    ) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        BoardroomContact boardroomContact = boardroomContactRepository.getContactRecord(contactId, boardroomId);
+        System.out.println(boardroomContact);
+        boardroomContact.setContact(boardroomContactDto.contact());
+        return boardroomContactMapper.toBoardroomContactResponseDto(
+                boardroomContactRepository.save(boardroomContact)
+        );
+    }
+
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {
         long userId = currentUserService.getUserId();
         long boardroomAdminId = boardroom.getAdministrator().getId();

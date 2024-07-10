@@ -110,12 +110,22 @@ public class BoardroomController {
 
     @DeleteMapping("/boardrooms/{boardroomId}/contacts/{contactId}")
     @Operation(summary = "Delete boardroom contact")
-    public ResponseEntity<Void> removeBoardroomContacts(
+    public ResponseEntity<Void> removeBoardroomContact(
             @PathVariable("boardroomId") long boardroomId,
             @PathVariable("contactId") long contactId
     ) {
         boardroomService.removeBoardroomContact(boardroomId, contactId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/boardrooms/{boardroomId}/contacts/{contactId}")
+    @Operation(summary = "Update boardroom contact")
+    public ResponseEntity<BoardroomContactResponseDto> updateBoardroomContact(
+            @PathVariable("boardroomId") long boardroomId,
+            @PathVariable("contactId") long contactId,
+            @RequestBody @Valid BoardroomContactDto boardroomContactDto
+    ) {
+        return ResponseEntity.ok(boardroomService.updateBoardroomContact(boardroomId, contactId, boardroomContactDto));
     }
 
     @PostMapping("/boardrooms/{boardroomId}/lock-message")
