@@ -13,6 +13,7 @@ import dev.johnmaluki.boardroom_booking_backend.equipment.service.EquipmentServi
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Base64;
 import java.util.List;
 
 @Service
@@ -42,6 +43,25 @@ public class EquipmentServiceImpl implements EquipmentService {
     @Override
     public void removeEquipment(long equipmentId) {
         this.equipmentSoftDeletion(equipmentId);
+    }
+
+    @Override
+    public EquipmentResponseDto updateEquipment(long equipmentId, EquipmentDto equipmentDto) {
+        Equipment equipment = this.getEquipmentById(equipmentId);
+        equipment.setBrand(equipmentDto.brand());
+        equipment.setDisposed(equipmentDto.isDisposed());
+        equipment.setDescription(equipmentDto.description());
+        equipment.setPicture(Base64.getDecoder().decode(equipmentDto.picture()));
+        equipment.setModelNumber(equipmentDto.modelNumber());
+        equipment.setTitle(equipmentDto.title());
+        equipment.setVideoUrl(equipmentDto.videoUrl());
+
+        if(equipment.getBoardroom().getId() != equipmentDto.boardroomId()) {
+            Boardroom boardroom = boardroomServiceUtil.findBoardroomById(equipmentDto.boardroomId());
+            equipment.setBoardroom(boardroom);
+        }
+        equipmentRepository.save(equipment);
+        return equipmentMapper.toEquipmentResponseDto(equipment);
     }
 
     private Equipment getEquipmentById(long equipmentId) {

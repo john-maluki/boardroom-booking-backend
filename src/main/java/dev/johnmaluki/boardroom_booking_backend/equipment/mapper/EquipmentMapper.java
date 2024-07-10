@@ -38,6 +38,7 @@ public class EquipmentMapper {
                 .videoUrl(equipmentDto.videoUrl())
                 .picture(Base64.getDecoder().decode(equipmentDto.picture()))
                 .brand(equipmentDto.brand())
+                .disposed(equipmentDto.isDisposed())
                 .build();
     }
 }

@@ -17,6 +17,7 @@ public record EquipmentDto(
         String modelNumber,
         @NotBlank(message = "must not be blank")
         String brand,
+        boolean isDisposed,
         @NotNull
         long boardroomId
 ) {}
