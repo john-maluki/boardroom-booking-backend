@@ -20,4 +20,5 @@ public interface BoardroomService {
     UserResponseDto createBoardroomAdministrator(long boardroomId, BoardroomAdminDto boardroomAdminDto);
     BoardroomContactResponseDto createBoardroomContact(long boardroomId, BoardroomContactDto boardroomContactDto);
     void removeBoardroomById(long boardroomId);
+    void removeBoardroomContact(long boardroomId, long contactId);
 }

@@ -173,6 +173,11 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
         this.deleteBoardroomSoftly(boardroomId);
     }
 
+    @Override
+    public void removeBoardroomContact(long boardroomId, long contactId) {
+        this.deleteBoardroomContactSoftly(boardroomId, contactId);
+    }
+
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {
         long userId = currentUserService.getUserId();
         long boardroomAdminId = boardroom.getAdministrator().getId();
@@ -215,5 +220,20 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
         Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
         boardroom.setDeleted(true);
         boardroomRepository.save(boardroom);
+    }
+
+    private void deleteBoardroomContactSoftly(long boardroomId, long contactId) {
+        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        BoardroomContact boardroomContact = boardroom.getBoardroomContacts().stream()
+                        .filter( contact -> contact.getId() == contactId)
+                .toList().get(0);
+        boolean isDeleted = boardroomContact.getDeleted();
+        if (isDeleted) {
+            throw new ResourceNotFoundException("Contact not found");
+        } else {
+            boardroomContact.setDeleted(true);
+            boardroomRepository.save(boardroom);
+        }
+
     }
 }
