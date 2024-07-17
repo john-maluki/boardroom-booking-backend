@@ -81,6 +81,9 @@ public class DumbDataGenerator implements ApplicationRunner {
                     .build();
             users.add(user);
         }
+
+        AppUser user1 = users.get(0);
+        user1.setEmail("jmuimi@kemri.go.ke");
         userRepository.saveAll(users);
     }
 

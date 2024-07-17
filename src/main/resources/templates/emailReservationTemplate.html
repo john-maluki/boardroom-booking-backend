@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Email</title>
+    <style>
+                * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+        }
+
+        .email-info {
+            width: 80%;
+            margin: 30px auto;
+            height: 100vh;
+        }
+
+        .logo {
+            display: flex;
+            justify-content: center;
+        }
+
+        .logo img{
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px
+        }
+
+        .divider {
+            width: 100%;
+            height: 40px;
+            background-color: rgb(6,171,221);
+            margin: 20px 0;
+        }
+
+        .notify-section {
+            margin-bottom: 20px;
+        }
+
+        .title-section {
+            margin-bottom: 20px;
+        }
+
+        .title-section h4, .summary-section h4 {
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
+        .title-section p, .summary-section p{
+            text-indent: 20px;
+            font-style: italic;
+        }
+
+        .summary-section {
+        margin-bottom: 20px
+        }
+    </style>
+</head>
+<body>
+    <section class="email-info">
+        <div class="logo">
+            <img src="cid:log" alt="logo"/>
+        </div>
+        <div class="divider">
+        </div>
+        <div class="notify-section">
+            <p>
+                <b th:text="${boardroomName}"></b> reservation has been successfully made.
+                Please review and approve it at your earliest convenience to confirm the booking.
+            </p>
+        </div>
+        <div class="reservation-details">
+            <div class="title-section">
+                <h4>TITLE</h4>
+                <p th:text="${meetingTitle}" ></p>
+            </div>
+            <div class="summary-section">
+                <h4>SUMMARY</h4>
+                <p th:text="${meetingDescription}"></p>
+            </div>
+
+            <p>Thank you</p>
+            <p>ICT support</p>
+
+        </div>
+    </section>
+</body>
+</html>

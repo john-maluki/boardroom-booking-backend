@@ -10,10 +10,14 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Profile;
 import org.springframework.ldap.core.LdapTemplate;
 import org.springframework.ldap.core.support.LdapContextSource;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Properties;
 
 @Configuration
 @RequiredArgsConstructor
@@ -90,6 +94,22 @@ public class AppConfig {
         provider.setUserDetailsService(userPrincipalDetailService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
+    }
+
+    @Bean
+    @DependsOn("dotenv")
+    public JavaMailSender javaMailSender() {
+        JavaMailSenderImpl javaMailSender = new JavaMailSenderImpl();
+        javaMailSender.setHost(dotenv().get("DEV_MAIL_HOST"));
+        javaMailSender.setUsername(dotenv().get("DEV_MAIL_USERNAME"));
+        javaMailSender.setPassword(dotenv().get("DEV_MAIL_PASSWORD"));
+        javaMailSender.setPort(Integer.parseInt(dotenv().get("DEV_MAIL_PORT")));
+
+        Properties props = javaMailSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        return javaMailSender;
     }
 
 }

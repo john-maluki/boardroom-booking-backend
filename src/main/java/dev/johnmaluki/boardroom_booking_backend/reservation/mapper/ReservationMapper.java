@@ -2,6 +2,7 @@ package dev.johnmaluki.boardroom_booking_backend.reservation.mapper;
 
 
 import dev.johnmaluki.boardroom_booking_backend.config.security.UserPrincipal;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
 import org.springframework.security.core.Authentication;
@@ -9,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Component
@@ -24,6 +26,8 @@ public class ReservationMapper {
                 .meetingType(reservation.getMeetingType())
                 .approvalStatus(reservation.getApprovalStatus())
                 .attendees(reservation.getAttendees())
+                .ictSupportRequired(reservation.isIctSupportRequired())
+                .isUrgentMeeting(reservation.isUrgentMeeting())
                 .startDate(zonedDateTimeStart.toLocalDate())
                 .endDate(zonedDateTimeEnd.toLocalDate())
                 .startTime(zonedDateTimeStart.toLocalTime())
@@ -36,6 +40,21 @@ public class ReservationMapper {
 
     public List<ReservationResponseDto> toReservationResponseDtoList(List<Reservation> reservations){
         return reservations.stream().map(this::toReservationResponseDto).toList();
+    }
+
+    public Reservation toReservation(ReservationDto reservationDto) {
+        return Reservation.builder()
+                .meetingTitle(reservationDto.meetingTitle())
+                .meetingType(reservationDto.meetingType())
+                .meetingDescription(reservationDto.meetingDescription())
+                .attendees(reservationDto.attendees())
+                .ictSupportRequired(reservationDto.ictSupportRequired())
+                .isUrgentMeeting(reservationDto.isUrgentMeeting())
+                .startDate(LocalDate.parse(reservationDto.startDate(), DateTimeFormatter.ISO_LOCAL_DATE))
+                .startTime(LocalTime.parse(reservationDto.startTime(), DateTimeFormatter.ISO_LOCAL_TIME))
+                .endDate(LocalDate.parse(reservationDto.endDate(), DateTimeFormatter.ISO_LOCAL_DATE))
+                .endTime(LocalTime.parse(reservationDto.endTime(), DateTimeFormatter.ISO_LOCAL_TIME))
+                .build();
     }
 
     private ZonedDateTime getZonedDateTime(LocalDate date, LocalTime time, String userTimeZone) {
@@ -51,4 +70,5 @@ public class ReservationMapper {
         UserPrincipal user = (UserPrincipal) auth.getPrincipal();
         return user.getUserTimeZone();
     }
+
 }

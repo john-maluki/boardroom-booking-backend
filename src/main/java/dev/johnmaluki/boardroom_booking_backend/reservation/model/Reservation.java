@@ -50,6 +50,14 @@ public class Reservation extends BaseEntity {
     @Column(name = "attendees", nullable = false) // store coma separated string
     private String attendees;
 
+    @Builder.Default
+    @Column(name = "ict_support_required", nullable = false)
+    private boolean ictSupportRequired = true;
+
+    @Builder.Default
+    @Column(name = "is_urgent_meeting", nullable = false)
+    private boolean isUrgentMeeting = false;
+
     @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "boardroom_id")

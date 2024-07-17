@@ -8,7 +8,20 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Builder
-public record ReservationResponseDto(long id, String meetingTitle, String meetingDescription, MeetingType meetingType,
-                                     String attendees, long boardroomId, long userId, ApprovalStatus approvalStatus,
-                                     LocalDate startDate, LocalDate endDate, LocalTime startTime, LocalTime endTime, String tag) {
-}
+public record ReservationResponseDto(
+        long id,
+        String meetingTitle,
+        String meetingDescription,
+        MeetingType meetingType,
+        String attendees,
+        long boardroomId,
+        long userId,
+        ApprovalStatus approvalStatus,
+        boolean ictSupportRequired,
+        boolean isUrgentMeeting,
+        LocalDate startDate,
+        LocalDate endDate,
+        LocalTime startTime,
+        LocalTime endTime,
+        String tag
+) {}

@@ -1,0 +1,55 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-size: 16px;
+}
+
+.email-info {
+    width: 50%;
+    margin: 30px auto;
+    height: 100vh;
+}
+
+.logo {
+    display: flex;
+    justify-content: center;
+}
+
+.logo img{
+    width: 100px;
+    height: 100px;
+    margin-bottom: 20px
+}
+
+.divider {
+    width: 100%;
+    height: 40px;
+    background-color: rgb(6,171,221);
+    margin: 20px 0;
+}
+
+.notify-section {
+    margin-bottom: 20px;
+}
+
+.title-section {
+    margin-bottom: 20px;
+}
+
+.title-section h4, .summary-section h4 {
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+.title-section p, .summary-section p{
+    text-indent: 20px;
+    font-style: italic;
+}
+
+.summary-section {
+margin-bottom: 20px
+}
