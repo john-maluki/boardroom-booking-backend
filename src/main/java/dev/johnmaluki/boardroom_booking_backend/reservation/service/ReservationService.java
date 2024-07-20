@@ -1,5 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.reservation.service;
 
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ApproveReservationDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 
@@ -23,4 +24,5 @@ public interface ReservationService {
     List<ReservationResponseDto> getArchivedReservations();
     ReservationResponseDto getReservationById(long reservationId);
     ReservationResponseDto createReservation(ReservationDto reservationDto);
+    ReservationResponseDto approveReservation(long reservationId, ApproveReservationDto approveReservationDto);
 }

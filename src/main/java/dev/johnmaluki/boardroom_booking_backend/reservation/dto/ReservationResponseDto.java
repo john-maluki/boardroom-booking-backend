@@ -19,6 +19,7 @@ public record ReservationResponseDto(
         ApprovalStatus approvalStatus,
         boolean ictSupportRequired,
         boolean isUrgentMeeting,
+        String meetingLink,
         LocalDate startDate,
         LocalDate endDate,
         LocalTime startTime,

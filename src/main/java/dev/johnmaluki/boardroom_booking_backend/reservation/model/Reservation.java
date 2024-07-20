@@ -58,6 +58,9 @@ public class Reservation extends BaseEntity {
     @Column(name = "is_urgent_meeting", nullable = false)
     private boolean isUrgentMeeting = false;
 
+    @Column(name = "meeting_link")
+    private String meetingLink;
+
     @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "boardroom_id")

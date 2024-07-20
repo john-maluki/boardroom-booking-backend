@@ -32,9 +32,7 @@ import java.util.Random;
 @RequiredArgsConstructor
 public class DumbDataGenerator implements ApplicationRunner {
     private static final List<RoleType> ROLE_TYPES = Arrays.asList(
-            RoleType.ADMIN,
             RoleType.USER,
-            RoleType.ADMIN,
             RoleType.USER,
             RoleType.USER,
             RoleType.USER
@@ -100,6 +98,8 @@ public class DumbDataGenerator implements ApplicationRunner {
 
             roles.add(role);
         }
+        Role role = roles.get(0);
+        role.setAuthority(RoleType.ADMIN);
         roleRepository.saveAll(roles);
     }
 

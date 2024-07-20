@@ -8,6 +8,7 @@ import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserService;
+import dev.johnmaluki.boardroom_booking_backend.user.service.UserServiceUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +17,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl implements UserService, UserServiceUtil {
     private final AppUserRepository userRepository;
     private final UserMapper userMapper;
     @Override
@@ -50,5 +51,10 @@ public class UserServiceImpl implements UserService {
         return userRepository.findByIdAndArchivedFalseAndDeletedFalse(userId).orElseThrow(
                 () -> new ResourceNotFoundException("User not found")
         );
+    }
+
+    @Override
+    public List<AppUser> getAllSystemAdministrators() {
+        return userRepository.findApplicationAdministrators();
     }
 }

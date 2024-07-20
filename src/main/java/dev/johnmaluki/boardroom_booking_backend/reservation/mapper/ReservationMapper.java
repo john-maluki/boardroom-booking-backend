@@ -28,6 +28,7 @@ public class ReservationMapper {
                 .attendees(reservation.getAttendees())
                 .ictSupportRequired(reservation.isIctSupportRequired())
                 .isUrgentMeeting(reservation.isUrgentMeeting())
+                .meetingLink(reservation.getMeetingLink())
                 .startDate(zonedDateTimeStart.toLocalDate())
                 .endDate(zonedDateTimeEnd.toLocalDate())
                 .startTime(zonedDateTimeStart.toLocalTime())

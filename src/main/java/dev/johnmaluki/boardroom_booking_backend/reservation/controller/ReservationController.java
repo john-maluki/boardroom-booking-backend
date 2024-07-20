@@ -1,5 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.reservation.controller;
 
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ApproveReservationDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationService;
@@ -8,6 +9,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,6 +54,18 @@ public class ReservationController {
     public ResponseEntity<ReservationResponseDto> createReservation(
             @RequestBody @Valid ReservationDto reservationDto
             ){
-        return ResponseEntity.ok(reservationService.createReservation(reservationDto));
+        return new ResponseEntity<>(
+                reservationService.createReservation(reservationDto),
+                HttpStatus.CREATED
+        );
+    }
+
+    @PatchMapping("/reservations/{reservationId}")
+    @Operation(summary = "Approve reservation")
+    public ResponseEntity<ReservationResponseDto> approveReservation(
+            @PathVariable("reservationId") long reservationId,
+            @RequestBody @Valid ApproveReservationDto approveReservationDto
+    ){
+        return ResponseEntity.ok(reservationService.approveReservation(reservationId, approveReservationDto));
     }
 }
