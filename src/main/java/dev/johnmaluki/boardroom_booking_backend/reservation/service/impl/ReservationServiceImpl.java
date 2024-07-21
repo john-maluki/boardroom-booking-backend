@@ -114,10 +114,14 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public ReservationResponseDto updateReservationWithMeetingLink(long reservationId, ReservationMeetingLinkDto reservationMeetingLinkDto) {
         Reservation reservation = this.findReservationByIdFromDb(reservationId);
+        boolean wasNUll = reservation.getMeetingLink() == null;
         reservation.setMeetingLink(reservationMeetingLinkDto.meetingLink());
         Reservation savedReservation = reservationRepository.save(reservation);
-        if (savedReservation.getMeetingLink() != null) {
+        if (wasNUll) {
             this.sendEmailToAttendeesPlusMeetingCreator(savedReservation);
+        } else {
+            String subject = EmailUtil.SUBJECT_RESERVATION_MEETING_LINK_UPDATE;
+            this.updateAttendeesPLusAdminsOfMeetingDetailChange(savedReservation, subject);
         }
         return reservationMapper.toReservationResponseDto(savedReservation);
     }
