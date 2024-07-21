@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -131,9 +132,27 @@ public class ReservationServiceImpl implements ReservationService {
             if (savedReservation.getApprovalStatus() == ApprovalStatus.PEDDING) {
                 this.sendMailForApproval(boardroom, savedReservation);
             } else if (savedReservation.getApprovalStatus() == ApprovalStatus.APPROVED) {
-                this.updateAttendeesPLusAdminsOfMeetingDetailChange(reservation);
+                String subject = EmailUtil.SUBJECT_RESERVATION_VENUE_CHANGE;
+                this.updateAttendeesPLusAdminsOfMeetingDetailChange(savedReservation, subject);
             }
         }
+        return reservationMapper.toReservationResponseDto(savedReservation);
+    }
+
+    @Override
+    public ReservationResponseDto rescheduleReservation(long reservationId, RescheduleReservationDto rescheduleReservationDto) {
+        LocalDate startDate = LocalDate.parse(rescheduleReservationDto.startDate(), DateTimeFormatter.ISO_LOCAL_DATE);
+        LocalDate endDate = LocalDate.parse(rescheduleReservationDto.endDate(), DateTimeFormatter.ISO_LOCAL_DATE);
+        LocalTime startTime = LocalTime.parse(rescheduleReservationDto.startTime(), DateTimeFormatter.ISO_LOCAL_TIME);
+        LocalTime endTime = LocalTime.parse(rescheduleReservationDto.endTime(), DateTimeFormatter.ISO_LOCAL_TIME);
+        Reservation reservation = this.findReservationByIdFromDb(reservationId);
+        reservation.setStartDate(startDate);
+        reservation.setEndDate(endDate);
+        reservation.setStartTime(startTime);
+        reservation.setEndTime(endTime);
+        Reservation savedReservation = reservationRepository.save(reservation);
+        String subject = EmailUtil.SUBJECT_RESERVATION_RESCHEDULED;
+        this.updateAttendeesPLusAdminsOfMeetingDetailChange(savedReservation, subject);
         return reservationMapper.toReservationResponseDto(savedReservation);
     }
 
@@ -188,10 +207,9 @@ public class ReservationServiceImpl implements ReservationService {
         emailService.sendEmailToAttendeesPlusCreator(attendees, subject, templateModel);
     }
 
-    private void updateAttendeesPLusAdminsOfMeetingDetailChange(Reservation reservation) {
+    private void updateAttendeesPLusAdminsOfMeetingDetailChange(Reservation reservation, String subject) {
         Set<String> attendees = this.getAttendeesFromCSVPlusCreator(reservation);
         Set<String> admins = this.getApplicationAdministratorEmails();
-        String subject = EmailUtil.SUBJECT_RESERVATION_VENUE_CHANGE;
         Map<String, Object> templateModel = this.prepareMailTemplate(reservation);
         templateModel.put("detailChange", true);
         emailService.sendNotificationEmailOfReservationUpdate(attendees, subject, templateModel);

@@ -6,4 +6,5 @@ public class EmailUtil {
     public static final String SUBJECT_RESERVATION_MEETING_LINK =  "Meeting Successfully Set Up - Details Inside";
     public static final String SUBJECT_RESERVATION_MEETING_LINK_UPDATE =  "Meeting Link Successfully Updated - Details Inside";
     public static final String SUBJECT_RESERVATION_VENUE_CHANGE =  "Meeting Venue Change - Details Inside";
+    public static final String SUBJECT_RESERVATION_RESCHEDULED =  "Meeting Rescheduled - Details Inside";
 }

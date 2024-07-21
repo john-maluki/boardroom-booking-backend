@@ -84,4 +84,13 @@ public class ReservationController {
     ){
         return ResponseEntity.ok(reservationService.changeReservationVenue(reservationId, changeVenueDto));
     }
+
+    @PatchMapping("/reservations/{reservationId}/reschedule")
+    @Operation(summary = "Reschedule reservation")
+    public ResponseEntity<ReservationResponseDto> rescheduleReservation(
+            @PathVariable("reservationId") long reservationId,
+            @RequestBody @Valid RescheduleReservationDto rescheduleReservationDto
+    ){
+        return ResponseEntity.ok(reservationService.rescheduleReservation(reservationId, rescheduleReservationDto));
+    }
 }
