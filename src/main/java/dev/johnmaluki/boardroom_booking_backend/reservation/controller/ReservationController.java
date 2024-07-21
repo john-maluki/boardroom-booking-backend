@@ -2,6 +2,7 @@ package dev.johnmaluki.boardroom_booking_backend.reservation.controller;
 
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ApproveReservationDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationMeetingLinkDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,12 +61,21 @@ public class ReservationController {
         );
     }
 
-    @PatchMapping("/reservations/{reservationId}")
+    @PatchMapping("/reservations/{reservationId}/approve")
     @Operation(summary = "Approve reservation")
     public ResponseEntity<ReservationResponseDto> approveReservation(
             @PathVariable("reservationId") long reservationId,
             @RequestBody @Valid ApproveReservationDto approveReservationDto
     ){
         return ResponseEntity.ok(reservationService.approveReservation(reservationId, approveReservationDto));
+    }
+
+    @PatchMapping("/reservations/{reservationId}/add-meeting-link")
+    @Operation(summary = "Update reservation with a meet link")
+    public ResponseEntity<ReservationResponseDto> updateReservationWithMeetLinK(
+            @PathVariable("reservationId") long reservationId,
+            @RequestBody @Valid ReservationMeetingLinkDto reservationMeetingLinkDto
+            ){
+        return ResponseEntity.ok(reservationService.updateReservationWithMeetingLink(reservationId, reservationMeetingLinkDto));
     }
 }

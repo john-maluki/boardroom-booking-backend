@@ -9,6 +9,7 @@ import dev.johnmaluki.boardroom_booking_backend.core.util.DataFilterUtil;
 import dev.johnmaluki.boardroom_booking_backend.messaging.email.EmailService;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ApproveReservationDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationMeetingLinkDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
@@ -25,10 +26,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -114,6 +113,17 @@ public class ReservationServiceImpl implements ReservationService {
         return reservationMapper.toReservationResponseDto(savedReservation);
     }
 
+    @Override
+    public ReservationResponseDto updateReservationWithMeetingLink(long reservationId, ReservationMeetingLinkDto reservationMeetingLinkDto) {
+        Reservation reservation = this.findReservationByIdFromDb(reservationId);
+        reservation.setMeetingLink(reservationMeetingLinkDto.meetingLink());
+        Reservation savedReservation = reservationRepository.save(reservation);
+        if (savedReservation.getMeetingLink() != null) {
+            this.sendEmailToAttendeesPlusMeetingCreator(savedReservation);
+        }
+        return reservationMapper.toReservationResponseDto(savedReservation);
+    }
+
     private List<Reservation> filterUseReservations(List<Reservation> reservations) {
         if (currentUserService.getUserRole() != RoleType.ADMIN) {
             return reservations.stream().filter(
@@ -146,14 +156,26 @@ public class ReservationServiceImpl implements ReservationService {
         emailService.sendEmailForReservationApproval(to, subject,templateModel);
     }
 
-    private List<String> getApplicationAdministratorEmails() {
+    private Set<String> getApplicationAdministratorEmails() {
         return userServiceUtil.getAllSystemAdministrators()
-                .stream().map(AppUser::getEmail).toList();
+                .stream().map(AppUser::getEmail).collect(Collectors.toSet());
     }
 
     private void sendEmailToAdminsForMeetLinkCreation(Reservation reservation) {
-        List<String> to = this.getApplicationAdministratorEmails();
+        Set<String> sendTo = this.getApplicationAdministratorEmails();
         String subject = EmailUtil.SUBJECT_RESERVATION_ADMIN_APPROVAL;
+        Map<String, Object> templateModel = this.prepareMailTemplate(reservation);
+        emailService.notifyAdministratorsOfReservationApproval(sendTo, subject, templateModel);
+    }
+
+    private void sendEmailToAttendeesPlusMeetingCreator(Reservation reservation) {
+        Set<String> attendees = this.getAttendeesFromCSVPlusCreator(reservation);
+        String subject = EmailUtil.SUBJECT_RESERVATION_MEETING_LINK;
+        Map<String, Object> templateModel = this.prepareMailTemplate(reservation);
+        emailService.sendEmailToAttendeesPlusCreator(attendees, subject, templateModel);
+    }
+
+    private Map<String, Object> prepareMailTemplate(Reservation reservation) {
         Map<String, Object> templateModel = new HashMap<>();
         templateModel.put("boardroomName", reservation.getBoardroom().getName());
         templateModel.put("bookedBy", reservation.getUser().getEmail());
@@ -162,19 +184,23 @@ public class ReservationServiceImpl implements ReservationService {
         templateModel.put("endDate", reservation.getEndDate());
         templateModel.put("startTime", reservation.getStartTime());
         templateModel.put("endTime", reservation.getEndTime());
-        templateModel.put("attendees", this.getAttendeesFromCSV(reservation.getAttendees()));
+        templateModel.put("meetingLink", reservation.getMeetingLink());
+        templateModel.put("attendees", this.getAttendeesFromCSVPlusCreator(reservation));
         templateModel.put("meetingTitle", reservation.getMeetingTitle());
         templateModel.put("meetingDescription", reservation.getMeetingDescription());
-        emailService.notifyAdministratorsOfReservationApproval(to, subject, templateModel);
+        return templateModel;
     }
 
-    private List<String> getAttendeesFromCSV(String attendeesCSV) {
+
+    private Set<String> getAttendeesFromCSVPlusCreator(Reservation reservation) {
         List<String> result = new ArrayList<>();
-        String[] items = attendeesCSV.split(",");
+        String[] items = reservation.getAttendees().split(",");
         for (String item : items) {
             result.add(item.trim());
         }
-        return result;
+        String creator = reservation.getUser().getEmail();
+        result.add(creator);
+        return new HashSet<>(result);
     }
 
 }

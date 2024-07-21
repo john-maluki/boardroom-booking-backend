@@ -2,6 +2,7 @@ package dev.johnmaluki.boardroom_booking_backend.reservation.service;
 
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ApproveReservationDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationMeetingLinkDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 
 import java.util.List;
@@ -25,4 +26,5 @@ public interface ReservationService {
     ReservationResponseDto getReservationById(long reservationId);
     ReservationResponseDto createReservation(ReservationDto reservationDto);
     ReservationResponseDto approveReservation(long reservationId, ApproveReservationDto approveReservationDto);
+    ReservationResponseDto updateReservationWithMeetingLink(long reservationId, ReservationMeetingLinkDto reservationMeetingLinkDto);
 }

@@ -14,10 +14,8 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -30,35 +28,17 @@ public class EmailServiceImpl implements EmailService{
     @Async
     @Override
     public void sendEmailForReservationApproval(String to, String subject, Map<String, Object> templateModel) {
-        MimeMessage mimeMessage = mailSender.createMimeMessage();
-        try {
-            MimeMessageHelper helper = new MimeMessageHelper(
-                    mimeMessage,
-                    MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
-                    StandardCharsets.UTF_8.name()
-            );
-            Context context = new Context();
-            context.setVariables(templateModel);
-            String htmlBody = this.templateEngine.process("emailReservationTemplate.html", context);
-
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlBody, true);
-            helper.setFrom(dotenv.get("DEFAULT_MAIL"));
-            // Attach images
-            helper.addInline("log", new ClassPathResource("static/img/kemri-logo.png"));
-            mailSender.send(mimeMessage);
-        } catch (MessagingException e) {
-            log.info("Sending email exception: {}", e.getMessage());
-        }
+        String htmlTemplate = "emailReservationTemplate.html";
+        this.sendEmail(to, subject, templateModel, htmlTemplate);
     }
 
     @Async
     @Override
-    public void sendEmailToAllAttendees(List<String> attendees, String subject, Map<String, Object> templateModel) {
-        attendees.forEach(
-                email -> System.out.println("Sending email to: " + email)
-        );
+    public void sendEmailToAttendeesPlusCreator(Set<String> attendees, String subject, Map<String, Object> templateModel) {
+        String htmlTemplate = "reservationTemplate.html";
+        for (String to : attendees) {
+            this.sendEmail(to, subject, templateModel, htmlTemplate);
+        }
     }
 
     @Override
@@ -68,13 +48,14 @@ public class EmailServiceImpl implements EmailService{
 
     @Async
     @Override
-    public void notifyAdministratorsOfReservationApproval(List<String> adminEmails, String subject, Map<String, Object> templateModel) {
-        for (String email : adminEmails) {
-            this.notifyAdmin(email, subject, templateModel);
+    public void notifyAdministratorsOfReservationApproval(Set<String> adminEmails, String subject, Map<String, Object> templateModel) {
+        String htmlTemplate = "reservationTemplate.html";
+        for (String to : adminEmails) {
+            this.sendEmail(to, subject, templateModel, htmlTemplate);
         }
     }
 
-    private void notifyAdmin(String to, String subject, Map<String, Object> templateModel) {
+    private void sendEmail(String to, String subject, Map<String, Object> templateModel, String htmlTemplate) {
         MimeMessage mimeMessage = mailSender.createMimeMessage();
         try {
             MimeMessageHelper helper = new MimeMessageHelper(
@@ -84,7 +65,7 @@ public class EmailServiceImpl implements EmailService{
             );
             Context context = new Context();
             context.setVariables(templateModel);
-            String htmlBody = this.templateEngine.process("notifyAdminReservationApproval.html", context);
+            String htmlBody = this.templateEngine.process(htmlTemplate, context);
 
             helper.setTo(to);
             helper.setSubject(subject);
