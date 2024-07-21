@@ -7,10 +7,7 @@ import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceOwnership
 import dev.johnmaluki.boardroom_booking_backend.core.service.CurrentUserService;
 import dev.johnmaluki.boardroom_booking_backend.core.util.DataFilterUtil;
 import dev.johnmaluki.boardroom_booking_backend.messaging.email.EmailService;
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ApproveReservationDto;
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationMeetingLinkDto;
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
 import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationRepository;
@@ -124,6 +121,22 @@ public class ReservationServiceImpl implements ReservationService {
         return reservationMapper.toReservationResponseDto(savedReservation);
     }
 
+    @Override
+    public ReservationResponseDto changeReservationVenue(long reservationId, ChangeVenueDto changeVenueDto) {
+        Reservation reservation = this.findReservationByIdFromDb(reservationId);
+        Boardroom boardroom = boardroomServiceUtil.findBoardroomById(changeVenueDto.boardroomId());
+        reservation.setBoardroom(boardroom);
+        Reservation savedReservation = reservationRepository.save(reservation);
+        if (Objects.equals(savedReservation.getBoardroom().getId(), boardroom.getId())) {
+            if (savedReservation.getApprovalStatus() == ApprovalStatus.PEDDING) {
+                this.sendMailForApproval(boardroom, savedReservation);
+            } else if (savedReservation.getApprovalStatus() == ApprovalStatus.APPROVED) {
+                this.updateAttendeesPLusAdminsOfMeetingDetailChange(reservation);
+            }
+        }
+        return reservationMapper.toReservationResponseDto(savedReservation);
+    }
+
     private List<Reservation> filterUseReservations(List<Reservation> reservations) {
         if (currentUserService.getUserRole() != RoleType.ADMIN) {
             return reservations.stream().filter(
@@ -175,6 +188,16 @@ public class ReservationServiceImpl implements ReservationService {
         emailService.sendEmailToAttendeesPlusCreator(attendees, subject, templateModel);
     }
 
+    private void updateAttendeesPLusAdminsOfMeetingDetailChange(Reservation reservation) {
+        Set<String> attendees = this.getAttendeesFromCSVPlusCreator(reservation);
+        Set<String> admins = this.getApplicationAdministratorEmails();
+        String subject = EmailUtil.SUBJECT_RESERVATION_VENUE_CHANGE;
+        Map<String, Object> templateModel = this.prepareMailTemplate(reservation);
+        templateModel.put("detailChange", true);
+        emailService.sendNotificationEmailOfReservationUpdate(attendees, subject, templateModel);
+        emailService.sendNotificationEmailOfReservationUpdate(admins, subject, templateModel);
+    }
+
     private Map<String, Object> prepareMailTemplate(Reservation reservation) {
         Map<String, Object> templateModel = new HashMap<>();
         templateModel.put("boardroomName", reservation.getBoardroom().getName());
@@ -184,6 +207,7 @@ public class ReservationServiceImpl implements ReservationService {
         templateModel.put("endDate", reservation.getEndDate());
         templateModel.put("startTime", reservation.getStartTime());
         templateModel.put("endTime", reservation.getEndTime());
+        templateModel.put("detailChange", false);
         templateModel.put("meetingLink", reservation.getMeetingLink());
         templateModel.put("attendees", this.getAttendeesFromCSVPlusCreator(reservation));
         templateModel.put("meetingTitle", reservation.getMeetingTitle());

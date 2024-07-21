@@ -1,9 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.reservation.controller;
 
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ApproveReservationDto;
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationMeetingLinkDto;
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -77,5 +74,14 @@ public class ReservationController {
             @RequestBody @Valid ReservationMeetingLinkDto reservationMeetingLinkDto
             ){
         return ResponseEntity.ok(reservationService.updateReservationWithMeetingLink(reservationId, reservationMeetingLinkDto));
+    }
+
+    @PatchMapping("/reservations/{reservationId}/change-venue")
+    @Operation(summary = "Change reservation venue")
+    public ResponseEntity<ReservationResponseDto> changeReservationVenue(
+            @PathVariable("reservationId") long reservationId,
+            @RequestBody @Valid ChangeVenueDto changeVenueDto
+    ){
+        return ResponseEntity.ok(reservationService.changeReservationVenue(reservationId, changeVenueDto));
     }
 }

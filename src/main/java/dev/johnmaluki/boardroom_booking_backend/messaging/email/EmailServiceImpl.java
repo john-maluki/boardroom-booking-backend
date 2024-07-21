@@ -55,6 +55,15 @@ public class EmailServiceImpl implements EmailService{
         }
     }
 
+    @Async
+    @Override
+    public void sendNotificationEmailOfReservationUpdate(Set<String> toEmails, String subject, Map<String, Object> templateModel) {
+        String htmlTemplate = "reservationTemplate.html";
+        for (String to : toEmails) {
+            this.sendEmail(to, subject, templateModel, htmlTemplate);
+        }
+    }
+
     private void sendEmail(String to, String subject, Map<String, Object> templateModel, String htmlTemplate) {
         MimeMessage mimeMessage = mailSender.createMimeMessage();
         try {

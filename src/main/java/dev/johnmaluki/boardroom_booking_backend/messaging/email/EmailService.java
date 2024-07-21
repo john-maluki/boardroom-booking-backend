@@ -8,4 +8,5 @@ public interface EmailService {
     void sendEmailToAttendeesPlusCreator(Set<String> attendees, String subject, Map<String, Object> templateModel);
     void notifyUserOfReservationApproval(String to, String subject, Map<String, Object> templateModel);
     void notifyAdministratorsOfReservationApproval(Set<String> adminEmails, String subject, Map<String, Object> templateModel);
+    void sendNotificationEmailOfReservationUpdate(Set<String> toEmails, String subject, Map<String, Object> templateModel);
 }

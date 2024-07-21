@@ -56,15 +56,15 @@
             margin-bottom: 20px;
         }
 
-        .title-section {
+        .title-section, .venue-section {
             margin: 20px 0;
         }
 
-        .title-section h4, .summary-section h4 {
+        .title-section h4, .summary-section h4, .venue-section h4{
             margin-top: 5px;
         }
 
-        .title-section p, .summary-section p{
+        .title-section p, .summary-section p, .venue-section p{
             text-indent: 20px;
             font-style: italic;
         }
@@ -140,13 +140,16 @@
     <div class="divider">
     </div>
     <div class="notify-section">
-        <p th:if="${meetingLink != null}">
+        <p th:if="${meetingLink != null} and ${detailChange == false}">
             Meeting link for the <b th:text="${boardroomName}"></b> boardroom has been successfully set.
             You can view the link and other information below.
         </p>
-        <p th:if="${meetingLink == null}">
+        <p th:if="${meetingLink == null} and ${detailChange == false}">
             <b th:text="${boardroomName}"></b> reservation has been successfully approved.
             Please review and create meeting link.
+        </p>
+        <p th:if="${detailChange == true}">
+            Reservation details have been updated. You can view the information below.
         </p>
     </div>
     <div class="reservation-details">
@@ -164,6 +167,10 @@
         <div class="title-section">
             <h4>Title</h4>
             <p th:text="${meetingTitle}"></p>
+        </div>
+        <div class="venue-section">
+            <h4>Meeting venue</h4>
+            <p th:text="${boardroomName}"></p>
         </div>
         <div class="summary-section">
             <h4>Summary</h4>
