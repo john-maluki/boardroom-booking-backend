@@ -15,6 +15,7 @@ import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationS
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserServiceUtil;
 import dev.johnmaluki.boardroom_booking_backend.util.ApprovalStatus;
+import dev.johnmaluki.boardroom_booking_backend.util.DateTimeUtil;
 import dev.johnmaluki.boardroom_booking_backend.util.EmailUtil;
 import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,6 +40,7 @@ public class ReservationServiceImpl implements ReservationService {
     private  final BoardroomServiceUtil boardroomServiceUtil;
     private final EmailService emailService;
     private final UserServiceUtil userServiceUtil;
+    private final DateTimeUtil dateTimeUtil;
 
     @Override
     public List<ReservationResponseDto> getAllReservations() {
@@ -49,22 +53,20 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public List<ReservationResponseDto> getUpcomingReservations() {
-        LocalDate today = LocalDate.now();
-        LocalTime now = LocalTime.now();
+        LocalDateTime currentDateTime = dateTimeUtil.getCurrentLocalDateTimeUtc();
         return reservationMapper.toReservationResponseDtoList(
                 new DataFilterUtil<Reservation>().removeArchivedAndDeletedRecords(
-                        this.filterUseReservations(reservationRepository.findByStartDateAndStartTimeGreaterThan(today, now))
+                        this.filterUseReservations(reservationRepository.findByStartLocalDateTimeAfter(currentDateTime))
                 )
         );
     }
 
     @Override
     public List<ReservationResponseDto> getAllLiveMeetings() {
-        LocalDate today = LocalDate.now();
-        LocalTime now = LocalTime.now();
+        LocalDateTime currentDateTime = dateTimeUtil.getCurrentLocalDateTimeUtc();
         return reservationMapper.toReservationResponseDtoList(
                 new DataFilterUtil<Reservation>().removeArchivedAndDeletedRecords(
-                        this.filterUseReservations(reservationRepository.findLiveMeetings(today, now))
+                        this.filterUseReservations(reservationRepository.findLiveMeetings(currentDateTime))
                 )
         );
     }
@@ -145,15 +147,11 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public ReservationResponseDto rescheduleReservation(long reservationId, RescheduleReservationDto rescheduleReservationDto) {
-        LocalDate startDate = LocalDate.parse(rescheduleReservationDto.startDate(), DateTimeFormatter.ISO_LOCAL_DATE);
-        LocalDate endDate = LocalDate.parse(rescheduleReservationDto.endDate(), DateTimeFormatter.ISO_LOCAL_DATE);
-        LocalTime startTime = LocalTime.parse(rescheduleReservationDto.startTime(), DateTimeFormatter.ISO_LOCAL_TIME);
-        LocalTime endTime = LocalTime.parse(rescheduleReservationDto.endTime(), DateTimeFormatter.ISO_LOCAL_TIME);
+        LocalDateTime startLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(rescheduleReservationDto.startDateTime());
+        LocalDateTime endLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(rescheduleReservationDto.endDateTime());
         Reservation reservation = this.findReservationByIdFromDb(reservationId);
-        reservation.setStartDate(startDate);
-        reservation.setEndDate(endDate);
-        reservation.setStartTime(startTime);
-        reservation.setEndTime(endTime);
+        reservation.setStartLocalDateTime(startLocalDateTime);
+        reservation.setEndLocalDateTime(endLocalDateTime);
         Reservation savedReservation = reservationRepository.save(reservation);
         String subject = EmailUtil.SUBJECT_RESERVATION_RESCHEDULED;
         this.updateAttendeesPLusAdminsOfMeetingDetailChange(savedReservation, subject);
@@ -221,14 +219,16 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private Map<String, Object> prepareMailTemplate(Reservation reservation) {
+        LocalDateTime startDate = dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(reservation.getStartLocalDateTime(), currentUserService.getAppUserTimezone());
+        LocalDateTime endDate = dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(reservation.getEndLocalDateTime(), currentUserService.getAppUserTimezone());
         Map<String, Object> templateModel = new HashMap<>();
         templateModel.put("boardroomName", reservation.getBoardroom().getName());
         templateModel.put("bookedBy", reservation.getUser().getEmail());
         templateModel.put("meetingType", reservation.getMeetingType());
-        templateModel.put("startDate", reservation.getStartDate());
-        templateModel.put("endDate", reservation.getEndDate());
-        templateModel.put("startTime", reservation.getStartTime());
-        templateModel.put("endTime", reservation.getEndTime());
+        templateModel.put("startDate", startDate.toLocalDate());
+        templateModel.put("endDate", endDate.toLocalDate());
+        templateModel.put("startTime", startDate.toLocalTime());
+        templateModel.put("endTime", endDate.toLocalTime());
         templateModel.put("detailChange", false);
         templateModel.put("meetingLink", reservation.getMeetingLink());
         templateModel.put("attendees", this.getAttendeesFromCSVPlusCreator(reservation));

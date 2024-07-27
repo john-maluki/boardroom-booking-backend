@@ -9,8 +9,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -20,17 +19,11 @@ import java.time.LocalTime;
 @Entity
 @Table(name="reservations")
 public class Reservation extends BaseEntity {
-    @Column(name="start_date")
-    private LocalDate startDate;
+    @Column(name="start_date_time")
+    private LocalDateTime startLocalDateTime;
 
-    @Column(name = "end_date")
-    private LocalDate endDate;
-
-    @Column(name = "start_time")
-    private LocalTime startTime;
-
-    @Column(name = "end_time")
-    private LocalTime endTime;
+    @Column(name = "end_date_time")
+    private LocalDateTime endLocalDateTime;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

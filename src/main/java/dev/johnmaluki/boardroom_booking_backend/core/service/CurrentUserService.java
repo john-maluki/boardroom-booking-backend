@@ -25,4 +25,8 @@ public class CurrentUserService {
     public AppUser getAppUser() {
         return this.getCurrentUser().getUser();
     }
+
+    public String getAppUserTimezone() {
+        return this.getCurrentUser().getUserTimeZone();
+    }
 }

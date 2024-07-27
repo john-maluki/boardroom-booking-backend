@@ -20,11 +20,7 @@ public record ReservationDto(
         boolean ictSupportRequired,
         boolean isUrgentMeeting,
         @NotNull(message = "The field is required")
-        String startDate,
+        String startDateTime,
         @NotNull(message = "The field is required")
-        String endDate,
-        @NotNull(message = "The field is required")
-        String startTime,
-        @NotNull(message = "The field is required")
-        String endTime
+        String endDateTime
 ) {}

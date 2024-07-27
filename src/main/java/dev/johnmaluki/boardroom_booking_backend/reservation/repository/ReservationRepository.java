@@ -7,27 +7,27 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
-    List<Reservation> findByStartDateAndStartTimeGreaterThan(LocalDate today, LocalTime now);
+    List<Reservation> findByStartLocalDateTimeAfter(LocalDateTime currentDateTime);
 
     @Query("SELECT e FROM Reservation e WHERE " +
-            "(:currentDate > e.startDate OR (:currentDate = e.startDate AND :currentTime >= e.startTime)) AND " +
-            "(:currentDate < e.endDate OR (:currentDate = e.endDate AND :currentTime <= e.endTime))")
-    List<Reservation> findLiveMeetings(@Param("currentDate") LocalDate currentDate, @Param("currentTime") LocalTime currentTime);
+            ":currentDateTime > e.startLocalDateTime AND " +
+            ":currentDateTime < e.endLocalDateTime")
+    List<Reservation> findLiveMeetings(@Param("currentDateTime") LocalDateTime currentDateTime);
     List<Reservation> findByArchivedTrueAndDeletedFalse();
     Optional<Reservation> findByIdAndArchivedFalseAndDeletedFalse(long id);
 
     @Query("SELECT e.boardroom.id, COUNT(e.id) > 0 " +
             "FROM Reservation e " +
-            "WHERE (:currentDate > e.startDate OR (:currentDate = e.startDate AND :currentTime >= e.startTime)) " +
-            "AND (:currentDate < e.endDate OR (:currentDate = e.endDate AND :currentTime <= e.endTime)) " +
-            "AND archived = false " +
-            "AND deleted = false " +
+            "WHERE :currentDateTime BETWEEN e.startLocalDateTime AND e.endLocalDateTime " +
+            "AND e.archived = false " +
+            "AND e.deleted = false " +
             "GROUP BY e.boardroom.id")
-    List<Object[]> findBoardroomOngoingMeetingStatus(@Param("currentDate") LocalDate currentDate, @Param("currentTime") LocalTime currentTime);
+    List<Object[]> findBoardroomOngoingMeetingStatus(@Param("currentDateTime") LocalDateTime currentDateTime);
 }

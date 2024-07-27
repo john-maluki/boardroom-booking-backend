@@ -5,20 +5,25 @@ import dev.johnmaluki.boardroom_booking_backend.config.security.UserPrincipal;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
+import dev.johnmaluki.boardroom_booking_backend.util.DateTimeUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.time.*;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 public class ReservationMapper {
+    private final DateTimeUtil dateTimeUtil;
     public ReservationResponseDto toReservationResponseDto(Reservation reservation) {
         String userTimeZone = this.getUserTimeZone();
-        ZonedDateTime zonedDateTimeStart = this.getZonedDateTime(reservation.getStartDate(), reservation.getStartTime(), userTimeZone);
-        ZonedDateTime zonedDateTimeEnd = this.getZonedDateTime(reservation.getEndDate(), reservation.getEndTime(), userTimeZone);
+        LocalDateTime startDateTime = reservation.getStartLocalDateTime();
+        LocalDateTime endDateTime = reservation.getEndLocalDateTime();
+        LocalDateTime localDateTimeStart = dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(startDateTime, userTimeZone);
+        LocalDateTime localDateTimeEnd = dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(endDateTime, userTimeZone);
         return ReservationResponseDto.builder()
                 .id(reservation.getId())
                 .meetingTitle(reservation.getMeetingTitle())
@@ -29,10 +34,10 @@ public class ReservationMapper {
                 .ictSupportRequired(reservation.isIctSupportRequired())
                 .isUrgentMeeting(reservation.isUrgentMeeting())
                 .meetingLink(reservation.getMeetingLink())
-                .startDate(zonedDateTimeStart.toLocalDate())
-                .endDate(zonedDateTimeEnd.toLocalDate())
-                .startTime(zonedDateTimeStart.toLocalTime())
-                .endTime(zonedDateTimeEnd.toLocalTime())
+                .startDate(localDateTimeStart.toLocalDate())
+                .endDate(localDateTimeEnd.toLocalDate())
+                .startTime(localDateTimeStart.toLocalTime())
+                .endTime(localDateTimeEnd.toLocalTime())
                 .boardroomId(reservation.getBoardroom().getId())
                 .userId(reservation.getUser().getId())
                 .tag(reservation.getTag())
@@ -44,6 +49,8 @@ public class ReservationMapper {
     }
 
     public Reservation toReservation(ReservationDto reservationDto) {
+        LocalDateTime startLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationDto.startDateTime());
+        LocalDateTime endLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationDto.endDateTime());
         return Reservation.builder()
                 .meetingTitle(reservationDto.meetingTitle())
                 .meetingType(reservationDto.meetingType())
@@ -51,19 +58,9 @@ public class ReservationMapper {
                 .attendees(reservationDto.attendees())
                 .ictSupportRequired(reservationDto.ictSupportRequired())
                 .isUrgentMeeting(reservationDto.isUrgentMeeting())
-                .startDate(LocalDate.parse(reservationDto.startDate(), DateTimeFormatter.ISO_LOCAL_DATE))
-                .startTime(LocalTime.parse(reservationDto.startTime(), DateTimeFormatter.ISO_LOCAL_TIME))
-                .endDate(LocalDate.parse(reservationDto.endDate(), DateTimeFormatter.ISO_LOCAL_DATE))
-                .endTime(LocalTime.parse(reservationDto.endTime(), DateTimeFormatter.ISO_LOCAL_TIME))
+                .startLocalDateTime(startLocalDateTime)
+                .endLocalDateTime(endLocalDateTime)
                 .build();
-    }
-
-    private ZonedDateTime getZonedDateTime(LocalDate date, LocalTime time, String userTimeZone) {
-        LocalDateTime dateTime = LocalDateTime.of(date, time);
-        ZoneId originalZoneId = ZoneId.of("UTC");
-        ZoneId targetZoneId = ZoneId.of(userTimeZone);
-        ZonedDateTime originalZonedDateTime = dateTime.atZone(originalZoneId);
-        return originalZonedDateTime.withZoneSameInstant(targetZoneId);
     }
 
     private String getUserTimeZone() {

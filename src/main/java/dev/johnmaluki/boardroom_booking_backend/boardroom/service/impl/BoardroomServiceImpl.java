@@ -14,7 +14,6 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServi
 import dev.johnmaluki.boardroom_booking_backend.core.exception.DuplicateResourceException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.service.CurrentUserService;
-import dev.johnmaluki.boardroom_booking_backend.core.util.DataFilterUtil;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.mapper.EquipmentMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
@@ -25,6 +24,7 @@ import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
+import dev.johnmaluki.boardroom_booking_backend.util.DateTimeUtil;
 import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -32,8 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +55,7 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     private final UserMapper userMapper;
     private final BoardroomContactMapper boardroomContactMapper;
     private final ReservationMapper reservationMapper;
+    private final DateTimeUtil dateTimeUtil;
     @Override
     public List<BoardroomResponseDto> getAllBoardrooms() {
         Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
@@ -247,9 +247,8 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     }
 
     private Map<Long, Boolean> getOngoingMeetingStatuses() {
-        LocalDate currentDate = LocalDate.now();
-        LocalTime currentTime = LocalTime.now();
-        List<Object[]> ongoingMeetingStatus = reservationRepository.findBoardroomOngoingMeetingStatus(currentDate, currentTime);
+        LocalDateTime currentDateTime = dateTimeUtil.getCurrentLocalDateTimeUtc();
+        List<Object[]> ongoingMeetingStatus = reservationRepository.findBoardroomOngoingMeetingStatus(currentDateTime);
         return ongoingMeetingStatus.stream()
                 .collect(Collectors.toMap(
                         status -> (Long) status[0],

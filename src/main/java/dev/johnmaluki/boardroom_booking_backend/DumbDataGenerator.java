@@ -20,12 +20,13 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 @Profile("dev")
 @Component
@@ -149,19 +150,16 @@ public class DumbDataGenerator implements ApplicationRunner {
             AppUser user = userRepository.findById(userId).orElseThrow();
             int index = random.nextInt(DumbDataGenerator.MEETING_TYPE.size());
             MeetingType meetingType = DumbDataGenerator.MEETING_TYPE.get(index);
-            LocalDate startDate = faker.date().birthday().toLocalDateTime().toLocalDate();
-            LocalDate endDate = startDate.plusDays(faker.number().numberBetween(1, 30));
-            LocalTime startTime = LocalTime.of(faker.number().numberBetween(0, 23), faker.number().numberBetween(0, 59));
-            LocalTime endTime = startTime.plusHours(faker.number().numberBetween(1, 5));
+            LocalDateTime startDate = faker.date().future(1, TimeUnit.DAYS)
+                    .toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
+            LocalDateTime endDate = startDate.plusDays(faker.number().numberBetween(1, 30));
             Reservation reservation = Reservation.builder()
                     .attendees("john@test.com,rukia@test.com")
                     .approvalStatus(ApprovalStatus.APPROVED)
                     .boardroom(boardroom)
                     .meetingType(meetingType)
-                    .startDate(startDate)
-                    .endDate(endDate)
-                    .startTime(startTime)
-                    .endTime(endTime)
+                    .startLocalDateTime(startDate)
+                    .endLocalDateTime(endDate)
                     .meetingTitle(faker.text().text(10, 20))
                     .meetingDescription(faker.text().text(30, 100))
                     .user(user)
@@ -170,15 +168,11 @@ public class DumbDataGenerator implements ApplicationRunner {
         }
 
         for (int i = 0; i <=5; i++) {
-            LocalDate startDate = LocalDate.now();
-            LocalDate endDate = LocalDate.now();
-            LocalTime startTime = LocalTime.now().minusHours(2);
-            LocalTime endTime = startTime.plusHours(faker.number().numberBetween(1, 5));
+            LocalDateTime startDate = LocalDateTime.now(ZoneId.of("UTC"));
+            LocalDateTime endDate = startDate.plusHours(faker.number().numberBetween(1, 5));
             Reservation reservation = reservations.get(i);
-            reservation.setStartDate(startDate);
-            reservation.setStartTime(startTime);
-            reservation.setEndDate(endDate);
-            reservation.setEndTime(endTime);
+            reservation.setStartLocalDateTime(startDate);
+            reservation.setEndLocalDateTime(endDate);
         }
         reservationRepository.saveAll(reservations);
     }
