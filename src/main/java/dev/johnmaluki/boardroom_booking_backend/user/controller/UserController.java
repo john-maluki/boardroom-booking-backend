@@ -1,5 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.user.controller;
 
+import dev.johnmaluki.boardroom_booking_backend.user.dto.KemriEmployeeResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
@@ -24,6 +25,12 @@ public class UserController {
     @GetMapping("/users")
     public ResponseEntity<List<UserResponseDto>> getAllUsers() {
         return  ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    @GetMapping("/kemri-employees")
+    @Operation(summary = "Fetch all kemri employees")
+    public ResponseEntity<List<KemriEmployeeResponseDto>> getKemriEmployees() {
+        return  ResponseEntity.ok(userService.getKemriEmployees());
     }
 
     @GetMapping("/users/{userId}")

@@ -1,11 +1,13 @@
 package dev.johnmaluki.boardroom_booking_backend.user.mapper;
 
+import dev.johnmaluki.boardroom_booking_backend.user.dto.KemriEmployeeResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class UserMapper {
@@ -30,6 +32,17 @@ public class UserMapper {
                         .timezone(z)
                         .build()
         ).toList();
+    }
+
+    public List<KemriEmployeeResponseDto> toKemriEmployeeResponseDtoList(List<Map<String, Object>> employees) {
+        return employees.stream().map(this::toKemriEmployeeResponseDto).toList();
+    }
+
+    private KemriEmployeeResponseDto toKemriEmployeeResponseDto(Map<String, Object> employee) {
+        return KemriEmployeeResponseDto.builder()
+                .name((String) employee.get("Employee_Name"))
+                .email((String) employee.get("Email"))
+                .build();
     }
 
 }

@@ -4,6 +4,10 @@ import dev.johnmaluki.boardroom_booking_backend.config.security.filter.AppUserDe
 import io.github.cdimascio.dotenv.Dotenv;
 import lombok.RequiredArgsConstructor;
 import net.datafaker.Faker;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.NTCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
@@ -110,6 +114,21 @@ public class AppConfig {
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
         return javaMailSender;
+    }
+
+    @Bean
+    @DependsOn("dotenv")
+    public CredentialsProvider credentialsProvider() {
+        String username = dotenv().get("DEV_NAV_USERNAME");
+        String password = dotenv().get("DEV_NAV_PASSWORD");
+        int port = Integer.parseInt(dotenv().get("DEV_NAV_PORT"));
+        // Create credentials provider with NTLM credentials
+        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(
+                new AuthScope(AuthScope.ANY_HOST, port),
+                new NTCredentials(username, password, null, null)
+        );
+        return credentialsProvider;
     }
 
 }
