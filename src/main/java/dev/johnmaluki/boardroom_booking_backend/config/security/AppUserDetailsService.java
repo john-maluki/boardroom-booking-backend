@@ -1,4 +1,4 @@
-package dev.johnmaluki.boardroom_booking_backend.config.security.filter;
+package dev.johnmaluki.boardroom_booking_backend.config.security;
 
 import org.springframework.ldap.core.LdapTemplate;
 import org.springframework.security.core.userdetails.UserDetailsService;

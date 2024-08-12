@@ -1,6 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.config;
 
-import dev.johnmaluki.boardroom_booking_backend.config.security.filter.AppUserDetailsService;
+import dev.johnmaluki.boardroom_booking_backend.config.security.AppUserDetailsService;
 import io.github.cdimascio.dotenv.Dotenv;
 import lombok.RequiredArgsConstructor;
 import net.datafaker.Faker;
@@ -26,8 +26,6 @@ import java.util.Properties;
 @Configuration
 @RequiredArgsConstructor
 public class AppConfig {
-    private final AppUserDetailsService userPrincipalDetailService;
-
     @Profile("dev")
     @Bean
     public Faker faker() {
@@ -48,31 +46,10 @@ public class AppConfig {
         return contextSource;
     }
 
-    @Profile("prod")
-    @DependsOn("dotenv")
-    @Bean
-    public LdapContextSource contextSource() {
-        LdapContextSource contextSource = new LdapContextSource();
-        contextSource.setUrl(dotenv().get("LDAP_PROD_SERVER_URL_1"));
-        contextSource.setBase("dc=kemri,dc=org");
-        contextSource.setUserDn(dotenv().get("LDAP_PROD_SERVER_USERNAME"));
-        contextSource.setPassword(dotenv().get("LDAP_PROD_SERVER_PASSWORD"));
-        contextSource.afterPropertiesSet();
-        return contextSource;
-    }
-
     @Profile("dev")
     @Bean
     public LdapTemplate ldapTemplateDev() {
         return new LdapTemplate(contextSourceDev());
-    }
-
-    @Profile("prod")
-    @Bean
-    public LdapTemplate ldapTemplate() {
-        LdapTemplate ldapTemplate = new LdapTemplate(contextSource());
-        ldapTemplate.setIgnorePartialResultException(true);
-        return ldapTemplate;
     }
 
     @Bean
@@ -80,19 +57,9 @@ public class AppConfig {
         return new BCryptPasswordEncoder();
     }
 
-    @Profile("prod")
-    @Bean
-    public AuthenticationProvider authenticationProvider(){
-        userPrincipalDetailService.setLdapTemplate(ldapTemplate());
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userPrincipalDetailService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return provider;
-    }
-
     @Profile("dev")
     @Bean
-    public AuthenticationProvider authenticationProviderDev(){
+    public AuthenticationProvider authenticationProviderDev(AppUserDetailsService userPrincipalDetailService){
         userPrincipalDetailService.setLdapTemplate(ldapTemplateDev());
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userPrincipalDetailService);

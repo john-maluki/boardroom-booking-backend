@@ -8,6 +8,7 @@ public record UserResponseDto(
        String username,
        String department,
        String email,
+       String fullName,
        String timeZone,
        String tag
 ) {}

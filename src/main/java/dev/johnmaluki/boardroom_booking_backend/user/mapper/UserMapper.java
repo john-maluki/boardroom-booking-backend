@@ -16,6 +16,7 @@ public class UserMapper {
                 .id(user.getId())
                 .timeZone(user.getTimeZone())
                 .username(user.getUsername())
+                .fullName(user.getFullName())
                 .department(user.getDepartment())
                 .email(user.getEmail())
                 .tag(user.getTag())

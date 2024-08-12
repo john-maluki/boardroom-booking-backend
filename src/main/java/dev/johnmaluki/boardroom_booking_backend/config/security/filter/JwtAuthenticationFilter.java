@@ -3,7 +3,6 @@ package dev.johnmaluki.boardroom_booking_backend.config.security.filter;
 import com.unboundid.util.NotNull;
 import dev.johnmaluki.boardroom_booking_backend.config.security.JwtService;
 import dev.johnmaluki.boardroom_booking_backend.config.security.UserPrincipal;
-import dev.johnmaluki.boardroom_booking_backend.core.exception.JwtTokenException;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
 import jakarta.servlet.FilterChain;

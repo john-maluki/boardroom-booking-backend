@@ -17,6 +17,7 @@ import org.springframework.security.authentication.AuthenticationServiceExceptio
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
@@ -51,14 +52,23 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
         } catch (RuntimeException | IOException e) {
             throw new AuthenticationServiceException(e.getMessage(), e);
         }
-//        System.out.println(password);
-//        boolean isUserInActiveDirectory = ldapService.authenticateUserFromActiveDirectory(username, password);
-//        System.out.println("user is in AD: " + isUserInActiveDirectory);
 
-        UsernamePasswordAuthenticationToken authRequest = new UsernamePasswordAuthenticationToken(
-                username, password, Collections.emptyList());
+        if (!ldapService.checkIfAppRunningLocally()) {
+            UserPrincipal userPrincipal = ldapService.authenticateAndRetrieveUserInfo(username, password); // authenticate from AD
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    userPrincipal,
+                    null,
+                    userPrincipal.getAuthorities()
+            );
+            // Optionally, set this authentication object in the SecurityContext
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            return authentication;
+        } else {
+            UsernamePasswordAuthenticationToken authRequest = new UsernamePasswordAuthenticationToken(
+                    username, password, Collections.emptyList());
+            return authenticationManager.authenticate(authRequest);
+        }
 
-        return authenticationManager.authenticate(authRequest);
     }
 
     @Override
@@ -79,6 +89,7 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
         UserPrincipal userPrincipal = (UserPrincipal) authResult.getPrincipal();
         Map<String, Object> claim = new HashMap<>();
         claim.put("role", userPrincipal.getUser().getRole().getAuthority());
+        claim.put("fullName", userPrincipal.getUser().getFullName());
         String accessToken = jwtService.generateToken(userPrincipal.getUsername(), claim);
         String refreshToken = jwtService.generateRefreshToken(userPrincipal.getUsername());
 

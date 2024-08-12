@@ -75,6 +75,7 @@ public class DumbDataGenerator implements ApplicationRunner {
             AppUser user = AppUser.builder().email(faker.internet()
                             .emailAddress())
                     .department(faker.company().industry())
+                    .fullName(faker.name().fullName())
                     .username(USERNAMES.get(i))
                     .timeZone(userUtil.getDefaultUserTimeZone())
                     .build();
@@ -83,6 +84,7 @@ public class DumbDataGenerator implements ApplicationRunner {
 
         AppUser user1 = users.get(0);
         user1.setEmail("jmuimi@kemri.go.ke");
+        user1.setFullName("John Maluki");
         userRepository.saveAll(users);
     }
 

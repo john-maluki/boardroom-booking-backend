@@ -22,6 +22,9 @@ public class AppUser extends BaseEntity {
     @Column(name = "username", unique = true, nullable = false)
     private String username;
 
+    @Column(name = "fullName", nullable = false)
+    private String fullName;
+
     @Column(name = "department")
     private String department;
 
