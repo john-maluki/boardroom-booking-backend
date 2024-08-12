@@ -1,9 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.user.controller;
 
-import dev.johnmaluki.boardroom_booking_backend.user.dto.KemriEmployeeResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneDto;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -25,6 +22,12 @@ public class UserController {
     @GetMapping("/users")
     public ResponseEntity<List<UserResponseDto>> getAllUsers() {
         return  ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    @GetMapping("/system-administrators")
+    @Operation(summary = "Fetch all system administrators")
+    public ResponseEntity<List<SystemAdministratorResponseDto>> getSystemAdministrators() {
+        return  ResponseEntity.ok(userService.getSystemAdministrators());
     }
 
     @GetMapping("/kemri-employees")

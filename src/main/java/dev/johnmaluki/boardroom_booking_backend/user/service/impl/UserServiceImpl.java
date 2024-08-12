@@ -2,12 +2,11 @@ package dev.johnmaluki.boardroom_booking_backend.user.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.KemriEmployeeResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneDto;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
+import dev.johnmaluki.boardroom_booking_backend.user.model.AppAdmin;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
+import dev.johnmaluki.boardroom_booking_backend.user.repository.AppAdminRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserService;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserServiceUtil;
@@ -31,6 +30,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService, UserServiceUtil {
     private final AppUserRepository userRepository;
+    private final AppAdminRepository appAdminRepository;
     private final UserMapper userMapper;
     private final CredentialsProvider credentialsProvider;
     private final Dotenv dotenv;
@@ -66,6 +66,12 @@ public class UserServiceImpl implements UserService, UserServiceUtil {
     public List<KemriEmployeeResponseDto> getKemriEmployees() {
         List<Map<String, Object>> employees = this.makeNTLMRequestToGetKemriEmployees();
         return userMapper.toKemriEmployeeResponseDtoList(employees);
+    }
+
+    @Override
+    public List<SystemAdministratorResponseDto> getSystemAdministrators() {
+        List<AppAdmin> appAdmins = appAdminRepository.findAllByArchivedFalseAndDeletedFalse();
+        return userMapper.toSystemAdministratorResponseDtoList(appAdmins);
     }
 
     private AppUser getUserFromDb(long userId){

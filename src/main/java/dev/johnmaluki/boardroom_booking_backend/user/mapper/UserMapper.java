@@ -1,8 +1,10 @@
 package dev.johnmaluki.boardroom_booking_backend.user.mapper;
 
 import dev.johnmaluki.boardroom_booking_backend.user.dto.KemriEmployeeResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.SystemAdministratorResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.model.AppAdmin;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +35,17 @@ public class UserMapper {
                         .timezone(z)
                         .build()
         ).toList();
+    }
+
+    public SystemAdministratorResponseDto toSystemAdministratorResponseDto(AppAdmin appAdmin) {
+        return SystemAdministratorResponseDto.builder()
+                .email(appAdmin.getEmail())
+                .tag(appAdmin.getTag())
+                .build();
+    }
+
+    public List<SystemAdministratorResponseDto> toSystemAdministratorResponseDtoList(List<AppAdmin> appAdmins) {
+        return appAdmins.stream().map(this::toSystemAdministratorResponseDto).toList();
     }
 
     public List<KemriEmployeeResponseDto> toKemriEmployeeResponseDtoList(List<Map<String, Object>> employees) {
