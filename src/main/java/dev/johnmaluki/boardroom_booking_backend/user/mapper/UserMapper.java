@@ -39,6 +39,7 @@ public class UserMapper {
 
     public SystemAdministratorResponseDto toSystemAdministratorResponseDto(AppAdmin appAdmin) {
         return SystemAdministratorResponseDto.builder()
+                .id(appAdmin.getId())
                 .email(appAdmin.getEmail())
                 .tag(appAdmin.getTag())
                 .build();

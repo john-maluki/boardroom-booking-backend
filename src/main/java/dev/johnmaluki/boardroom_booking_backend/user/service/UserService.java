@@ -11,4 +11,5 @@ public interface UserService {
     UserResponseDto changeUserTimezone(long userId, UserTimezoneDto userTimezoneDto);
     List<KemriEmployeeResponseDto> getKemriEmployees();
     List<SystemAdministratorResponseDto> getSystemAdministrators();
+    void removeSystemAdmin(long adminId);
 }

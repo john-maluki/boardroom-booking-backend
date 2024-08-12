@@ -43,6 +43,15 @@ public class UserController {
         return  ResponseEntity.ok(userService.getUserId(userId));
     }
 
+    @DeleteMapping("/system-administrators/{adminId}")
+    @Operation(summary = "Remove user as administrator")
+    public ResponseEntity<Void> removeSystemAdmin(
+            @PathVariable("adminId") long adminId
+    ) {
+        userService.removeSystemAdmin(adminId);
+        return  ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/user-timezones")
     @Operation(summary = "Fetch user timezones")
     public ResponseEntity<List<UserTimezoneResponseDto>> getUserTimezones() {

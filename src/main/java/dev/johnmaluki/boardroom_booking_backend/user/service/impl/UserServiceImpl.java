@@ -74,6 +74,12 @@ public class UserServiceImpl implements UserService, UserServiceUtil {
         return userMapper.toSystemAdministratorResponseDtoList(appAdmins);
     }
 
+    @Override
+    public void removeSystemAdmin(long adminId) {
+        AppAdmin appAdmin = this.findAdminById(adminId);
+        appAdminRepository.delete(appAdmin);
+    }
+
     private AppUser getUserFromDb(long userId){
         return userRepository.findByIdAndArchivedFalseAndDeletedFalse(userId).orElseThrow(
                 () -> new ResourceNotFoundException("User not found")
@@ -105,5 +111,11 @@ public class UserServiceImpl implements UserService, UserServiceUtil {
             System.out.printf(e.getMessage());
         }
         return Collections.emptyList();
+    }
+
+    private AppAdmin findAdminById(long adminId) {
+        return appAdminRepository.findById(adminId).orElseThrow(
+                () -> new ResourceNotFoundException("Admin not found")
+        );
     }
 }
