@@ -1,5 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.messaging.email;
 
+import dev.johnmaluki.boardroom_booking_backend.core.service.ProfileChecker;
 import io.github.cdimascio.dotenv.Dotenv;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -24,6 +25,7 @@ public class EmailServiceImpl implements EmailService{
     private final JavaMailSender mailSender;
     private final SpringTemplateEngine templateEngine;
     private final Dotenv dotenv;
+    private final ProfileChecker profileChecker;
 
     @Async
     @Override
@@ -76,10 +78,14 @@ public class EmailServiceImpl implements EmailService{
             context.setVariables(templateModel);
             String htmlBody = this.templateEngine.process(htmlTemplate, context);
 
+            String fromEmail = profileChecker.checkIfAppRunningLocally()
+                    ? dotenv.get("DEV_DEFAULT_MAIL")
+                    : dotenv.get("PROD_DEFAULT_MAIL");
+
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
-            helper.setFrom(dotenv.get("DEFAULT_MAIL"));
+            helper.setFrom(fromEmail);
             // Attach images
             helper.addInline("log", new ClassPathResource("static/img/kemri-logo.png"));
             mailSender.send(mimeMessage);

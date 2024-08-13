@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.johnmaluki.boardroom_booking_backend.config.security.JwtService;
 import dev.johnmaluki.boardroom_booking_backend.config.security.LdapService;
 import dev.johnmaluki.boardroom_booking_backend.config.security.UserPrincipal;
+import dev.johnmaluki.boardroom_booking_backend.core.service.ProfileChecker;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -32,6 +33,8 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
     private final JwtService jwtService;
     @Setter
     private LdapService ldapService;
+    @Setter
+    private ProfileChecker profileChecker;
 
     public BoardroomUsernamePasswordAuthenticationFilter(AuthenticationManager authenticationManager, JwtService jwtService) {
         this.authenticationManager = authenticationManager;
@@ -53,7 +56,7 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
             throw new AuthenticationServiceException(e.getMessage(), e);
         }
 
-        if (!ldapService.checkIfAppRunningLocally()) {
+        if (!profileChecker.checkIfAppRunningLocally()) {
             UserPrincipal userPrincipal = ldapService.authenticateAndRetrieveUserInfo(username, password); // authenticate from AD
             Authentication authentication = new UsernamePasswordAuthenticationToken(
                     userPrincipal,

@@ -3,7 +3,7 @@ package dev.johnmaluki.boardroom_booking_backend.config.security;
 import dev.johnmaluki.boardroom_booking_backend.config.security.filter.BoardroomUsernamePasswordAuthenticationFilter;
 import dev.johnmaluki.boardroom_booking_backend.config.security.filter.JwtAuthenticationFilter;
 import dev.johnmaluki.boardroom_booking_backend.config.security.filter.RefreshTokenAuthenticationFilter;
-import dev.johnmaluki.boardroom_booking_backend.config.security.impl.LdapServiceImpl;
+import dev.johnmaluki.boardroom_booking_backend.core.service.ProfileChecker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -27,7 +27,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
     private final JwtService jwtService;
     private final AuthenticationConfiguration authenticationConfiguration;
-    private final LdapServiceImpl ldapService;
+    private final LdapService ldapService;
+    private final ProfileChecker profileChecker;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RefreshTokenAuthenticationFilter refreshTokenAuthenticationFilter;
 
@@ -37,6 +38,7 @@ public class SecurityConfig {
         BoardroomUsernamePasswordAuthenticationFilter boardroomUsernamePasswordFilter = new BoardroomUsernamePasswordAuthenticationFilter(authenticationManager(), jwtService);
         boardroomUsernamePasswordFilter.setFilterProcessesUrl("/auth/login");
         boardroomUsernamePasswordFilter.setLdapService(ldapService);
+        boardroomUsernamePasswordFilter.setProfileChecker(profileChecker);
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authenticationManager(authenticationManager())

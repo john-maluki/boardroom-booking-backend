@@ -36,8 +36,6 @@ public class LdapServiceImpl implements LdapService {
     private final RoleRepository roleRepository;
     private final UserUtil userUtil;
 
-    @Value("${spring.profiles.active}")
-    private String activeProfiles;
 
     @Override
     public UserPrincipal authenticateAndRetrieveUserInfo(String username, String password) {
@@ -53,11 +51,6 @@ public class LdapServiceImpl implements LdapService {
             log.info("Problem authenticating user: {}", username);
             throw new UsernameNotFoundException("user not found");
         }
-    }
-
-    @Override
-    public boolean checkIfAppRunningLocally() {
-        return activeProfiles.equals("dev");
     }
 
     private DirContext authenticateUserFromActiveDirectory(String username, String password) throws NamingException {

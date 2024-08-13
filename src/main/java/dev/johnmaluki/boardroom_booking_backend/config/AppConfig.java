@@ -67,9 +67,10 @@ public class AppConfig {
         return provider;
     }
 
+    @Profile("dev")
     @Bean
     @DependsOn("dotenv")
-    public JavaMailSender javaMailSender() {
+    public JavaMailSender javaMailSenderDev() {
         JavaMailSenderImpl javaMailSender = new JavaMailSenderImpl();
         javaMailSender.setHost(dotenv().get("DEV_MAIL_HOST"));
         javaMailSender.setUsername(dotenv().get("DEV_MAIL_USERNAME"));
@@ -80,6 +81,24 @@ public class AppConfig {
         props.put("mail.transport.protocol", "smtp");
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
+        return javaMailSender;
+    }
+
+    @Profile("prod")
+    @Bean
+    @DependsOn("dotenv")
+    public JavaMailSender javaMailSender() {
+        JavaMailSenderImpl javaMailSender = new JavaMailSenderImpl();
+        javaMailSender.setHost(dotenv().get("PROD_MAIL_HOST"));
+        javaMailSender.setUsername(dotenv().get("PROD_MAIL_USERNAME"));
+        javaMailSender.setPassword(dotenv().get("PROD_MAIL_PASSWORD"));
+        javaMailSender.setPort(Integer.parseInt(dotenv().get("PROD_MAIL_PORT")));
+
+        Properties props = javaMailSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.starttls.required", "true");
         return javaMailSender;
     }
 
