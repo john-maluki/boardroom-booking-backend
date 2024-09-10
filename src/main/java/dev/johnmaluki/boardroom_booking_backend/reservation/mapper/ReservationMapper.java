@@ -33,6 +33,7 @@ public class ReservationMapper {
                 .attendees(reservation.getAttendees())
                 .ictSupportRequired(reservation.isIctSupportRequired())
                 .isUrgentMeeting(reservation.isUrgentMeeting())
+                .recordMeeting(reservation.isRecordMeeting())
                 .meetingLink(reservation.getMeetingLink())
                 .startDate(localDateTimeStart.toLocalDate())
                 .endDate(localDateTimeEnd.toLocalDate())
@@ -40,6 +41,9 @@ public class ReservationMapper {
                 .endTime(localDateTimeEnd.toLocalTime())
                 .boardroomId(reservation.getBoardroom().getId())
                 .userId(reservation.getUser().getId())
+                .reservedBy(reservation.getUser().getFullName())
+                .boardroomName(reservation.getBoardroom().getName())
+                .ownerEmail(reservation.getUser().getEmail())
                 .tag(reservation.getTag())
                 .build();
     }
@@ -58,6 +62,7 @@ public class ReservationMapper {
                 .attendees(reservationDto.attendees())
                 .ictSupportRequired(reservationDto.ictSupportRequired())
                 .isUrgentMeeting(reservationDto.isUrgentMeeting())
+                .recordMeeting(reservationDto.recordMeeting())
                 .startLocalDateTime(startLocalDateTime)
                 .endLocalDateTime(endLocalDateTime)
                 .build();

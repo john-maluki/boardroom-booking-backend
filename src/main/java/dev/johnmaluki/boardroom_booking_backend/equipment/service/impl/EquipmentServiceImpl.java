@@ -51,7 +51,7 @@ public class EquipmentServiceImpl implements EquipmentService {
         equipment.setBrand(equipmentDto.brand());
         equipment.setDisposed(equipmentDto.isDisposed());
         equipment.setDescription(equipmentDto.description());
-        equipment.setPicture(Base64.getDecoder().decode(equipmentDto.picture()));
+        equipment.setPicture(equipmentDto.picture());
         equipment.setModelNumber(equipmentDto.modelNumber());
         equipment.setTitle(equipmentDto.title());
         equipment.setVideoUrl(equipmentDto.videoUrl());

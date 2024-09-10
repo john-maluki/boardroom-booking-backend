@@ -18,7 +18,7 @@ public class EquipmentMapper {
                 .description(equipment.getDescription())
                 .modelNumber(equipment.getModelNumber())
                 .videoUrl(equipment.getVideoUrl())
-                .picture(Base64.getEncoder().encodeToString(equipment.getPicture()))
+                .picture(equipment.getPicture())
                 .brand(equipment.getBrand())
                 .tag(equipment.getTag())
                 .boardroomId(equipment.getBoardroom().getId())
@@ -36,7 +36,7 @@ public class EquipmentMapper {
                 .description(equipmentDto.description())
                 .modelNumber(equipmentDto.modelNumber())
                 .videoUrl(equipmentDto.videoUrl())
-                .picture(Base64.getDecoder().decode(equipmentDto.picture()))
+                .picture(equipmentDto.picture())
                 .brand(equipmentDto.brand())
                 .disposed(equipmentDto.isDisposed())
                 .build();

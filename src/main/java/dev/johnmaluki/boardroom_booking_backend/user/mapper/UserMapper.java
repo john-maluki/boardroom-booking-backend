@@ -1,9 +1,6 @@
 package dev.johnmaluki.boardroom_booking_backend.user.mapper;
 
-import dev.johnmaluki.boardroom_booking_backend.user.dto.KemriEmployeeResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.SystemAdministratorResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppAdmin;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import org.springframework.stereotype.Component;
@@ -42,6 +39,12 @@ public class UserMapper {
                 .id(appAdmin.getId())
                 .email(appAdmin.getEmail())
                 .tag(appAdmin.getTag())
+                .build();
+    }
+
+    public AppAdmin toAppAdmin(SystemAdministratorDto systemAdministratorDto) {
+        return  AppAdmin.builder()
+                .email(systemAdministratorDto.email())
                 .build();
     }
 

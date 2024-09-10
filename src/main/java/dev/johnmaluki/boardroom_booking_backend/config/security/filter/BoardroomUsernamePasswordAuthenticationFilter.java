@@ -93,6 +93,9 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
         Map<String, Object> claim = new HashMap<>();
         claim.put("role", userPrincipal.getUser().getRole().getAuthority());
         claim.put("fullName", userPrincipal.getUser().getFullName());
+        claim.put("email", userPrincipal.getUser().getEmail());
+        claim.put("timezone", userPrincipal.getUser().getTimeZone());
+        claim.put("id", userPrincipal.getUser().getId());
         String accessToken = jwtService.generateToken(userPrincipal.getUsername(), claim);
         String refreshToken = jwtService.generateRefreshToken(userPrincipal.getUsername());
 
@@ -105,8 +108,8 @@ public class BoardroomUsernamePasswordAuthenticationFilter extends UsernamePassw
         response.addCookie(cookie);
 
         Map<String, String> tokens = new HashMap<>();
-        tokens.put("access_token", accessToken);
-        tokens.put("refresh_token", refreshToken);
+        tokens.put("accessToken", accessToken);
+        tokens.put("refreshToken", refreshToken);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         new ObjectMapper().writeValue(response.getOutputStream(), tokens);
     }

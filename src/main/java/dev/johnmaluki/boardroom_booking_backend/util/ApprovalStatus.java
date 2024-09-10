@@ -1,7 +1,7 @@
 package dev.johnmaluki.boardroom_booking_backend.util;
 
 public enum ApprovalStatus {
-    PEDDING,
+    PENDING,
     APPROVED,
-    NOT_ACCEPTED
+    DECLINED
 }

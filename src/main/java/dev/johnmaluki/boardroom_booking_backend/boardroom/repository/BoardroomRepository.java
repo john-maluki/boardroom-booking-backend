@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface BoardroomRepository extends JpaRepository<Boardroom, Long> {
     List<Boardroom> findByArchivedFalseAndDeletedFalse();
     Optional<Boardroom> findByIdAndArchivedFalseAndDeletedFalse(long boardroomId);
+    List<Boardroom> findAllByLockedTrueAndDeletedFalseAndArchivedFalse();
 }

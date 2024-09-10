@@ -30,4 +30,5 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "AND e.deleted = false " +
             "GROUP BY e.boardroom.id")
     List<Object[]> findBoardroomOngoingMeetingStatus(@Param("currentDateTime") LocalDateTime currentDateTime);
+    List<Reservation> findAllByOrderByStartLocalDateTimeDesc();
 }

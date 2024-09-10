@@ -9,7 +9,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -28,16 +27,16 @@ public class RefreshTokenAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // Get the request URI
         String requestURI = request.getRequestURI();
-
         // Check the request URL
         if (requestURI.startsWith("/auth/refresh-token")) {
-            final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
             final String refreshToken;
             final String username;
-            if (authHeader == null && !authHeader.startsWith("Bearer ")) {
+            try {
+                Map<String, String> requestMap = new ObjectMapper().readValue(request.getInputStream(), Map.class);
+                refreshToken = requestMap.get("refreshToken");
+            } catch (IOException e) {
                 return;
             }
-            refreshToken = authHeader.substring(7);
             username = jwtService.extractUsername(refreshToken);
             if (username != null) {
                 AppUser appUser = userRepository.findByUsername(username).orElseThrow();
@@ -45,10 +44,14 @@ public class RefreshTokenAuthenticationFilter extends OncePerRequestFilter {
                 if (tokenIsValid) {
                     Map<String, Object> claim = new HashMap<>();
                     claim.put("role", appUser.getRole().getAuthority());
+                    claim.put("email", appUser.getEmail());
+                    claim.put("fullName", appUser.getFullName());
+                    claim.put("timezone", appUser.getTimeZone());
+                    claim.put("id", appUser.getId());
                     String accessToken = jwtService.generateToken(username, claim);
                     Map<String, String> tokens = new HashMap<>();
-                    tokens.put("access_token", accessToken);
-                    tokens.put("refresh_token", refreshToken);
+                    tokens.put("accessToken", accessToken);
+                    tokens.put("refreshToken", refreshToken);
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     new ObjectMapper().writeValue(response.getOutputStream(), tokens);
                 }

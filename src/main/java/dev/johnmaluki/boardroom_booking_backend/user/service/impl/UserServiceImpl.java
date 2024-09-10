@@ -2,6 +2,7 @@ package dev.johnmaluki.boardroom_booking_backend.user.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.UniqueContraintException;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppAdmin;
@@ -78,6 +79,16 @@ public class UserServiceImpl implements UserService, UserServiceUtil {
     public void removeSystemAdmin(long adminId) {
         AppAdmin appAdmin = this.findAdminById(adminId);
         appAdminRepository.delete(appAdmin);
+    }
+
+    @Override
+    public SystemAdministratorResponseDto createSystemAdministrator(SystemAdministratorDto systemAdministratorDto) {
+        boolean alreadyFound = appAdminRepository.existsByEmail(systemAdministratorDto.email());
+        if(alreadyFound) {
+            throw new UniqueContraintException("Admin with that email exists");
+        }
+        var appAdmin = userMapper.toAppAdmin(systemAdministratorDto);
+        return userMapper.toSystemAdministratorResponseDto(appAdminRepository.save(appAdmin));
     }
 
     private AppUser getUserFromDb(long userId){

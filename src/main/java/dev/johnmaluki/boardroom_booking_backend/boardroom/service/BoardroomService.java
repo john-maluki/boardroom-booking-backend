@@ -4,11 +4,13 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 public interface BoardroomService {
     List<BoardroomResponseDto> getAllBoardrooms();
+    List<BoardroomResponseDto> getLockedBoardrooms();
     BoardroomResponseDto getBoardroomById(long boardroomId);
     LockedBoardroomResponseDto getLockedBoardroomReasonById(long boardroomId);
     List<ReservationResponseDto> getBoardroomReservations(long boardroomId);

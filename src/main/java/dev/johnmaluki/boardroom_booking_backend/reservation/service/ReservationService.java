@@ -26,4 +26,5 @@ public interface ReservationService {
     ReservationResponseDto updateReservationWithMeetingLink(long reservationId, ReservationMeetingLinkDto reservationMeetingLinkDto);
     ReservationResponseDto changeReservationVenue(long reservationId, ChangeVenueDto changeVenueDto);
     ReservationResponseDto rescheduleReservation(long reservationId, RescheduleReservationDto rescheduleReservationDto);
+    void removeReservation(long reservationId);
 }

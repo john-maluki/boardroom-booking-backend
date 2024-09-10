@@ -22,11 +22,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,7 +41,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public List<ReservationResponseDto> getAllReservations() {
-        List<Reservation> reservations = reservationRepository.findAll();
+        List<Reservation> reservations = reservationRepository.findAllByOrderByStartLocalDateTimeDesc();
         reservations = this.filterUseReservations(reservations);
         return reservationMapper.toReservationResponseDtoList(
                 new DataFilterUtil<Reservation>().removeArchivedAndDeletedRecords(reservations)
@@ -105,7 +102,8 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public ReservationResponseDto approveReservation(long reservationId, ApproveReservationDto approveReservationDto) {
         Reservation reservation = this.findReservationByIdFromDb(reservationId);
-        reservation.setApprovalStatus(ApprovalStatus.APPROVED);
+        ApprovalStatus approvalStatus = approveReservationDto.approvalStatus();
+        reservation.setApprovalStatus(approvalStatus);
         Reservation savedReservation = reservationRepository.save(reservation);
         if(savedReservation.getApprovalStatus() == ApprovalStatus.APPROVED) {
             this.sendEmailToAdminsForMeetLinkCreation(reservation);
@@ -133,9 +131,10 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation reservation = this.findReservationByIdFromDb(reservationId);
         Boardroom boardroom = boardroomServiceUtil.findBoardroomById(changeVenueDto.boardroomId());
         reservation.setBoardroom(boardroom);
+        reservation.setApprovalStatus(ApprovalStatus.PENDING);
         Reservation savedReservation = reservationRepository.save(reservation);
         if (Objects.equals(savedReservation.getBoardroom().getId(), boardroom.getId())) {
-            if (savedReservation.getApprovalStatus() == ApprovalStatus.PEDDING) {
+            if (savedReservation.getApprovalStatus() == ApprovalStatus.PENDING) {
                 this.sendMailForApproval(boardroom, savedReservation);
             } else if (savedReservation.getApprovalStatus() == ApprovalStatus.APPROVED) {
                 String subject = EmailUtil.SUBJECT_RESERVATION_VENUE_CHANGE;
@@ -156,6 +155,24 @@ public class ReservationServiceImpl implements ReservationService {
         String subject = EmailUtil.SUBJECT_RESERVATION_RESCHEDULED;
         this.updateAttendeesPLusAdminsOfMeetingDetailChange(savedReservation, subject);
         return reservationMapper.toReservationResponseDto(savedReservation);
+    }
+
+    @Override
+    public void removeReservation(long reservationId) {
+        Reservation reservation = this.findReservationByIdFromDb(reservationId);
+        boolean isCreationDateLessThan10Minutes = this.checkCreationDateLessThan10Minutes(reservation.getCreatedAt());
+        if(isCreationDateLessThan10Minutes) {
+            reservationRepository.delete(reservation);
+        } else {
+            reservation.setDeleted(true);
+            reservationRepository.save(reservation);
+        }
+    }
+
+    private boolean checkCreationDateLessThan10Minutes(LocalDateTime createdAt) {
+        LocalDateTime now = LocalDateTime.now();
+        long minutesDifference = ChronoUnit.MINUTES.between(createdAt, now);
+        return minutesDifference <= 10;
     }
 
     private List<Reservation> filterUseReservations(List<Reservation> reservations) {

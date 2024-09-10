@@ -12,8 +12,10 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.LockedRoomR
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServiceUtil;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.DuplicateResourceException;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.FileUploadException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.service.CurrentUserService;
+import dev.johnmaluki.boardroom_booking_backend.core.service.FileService;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.mapper.EquipmentMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
@@ -31,12 +33,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -56,6 +57,7 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     private final BoardroomContactMapper boardroomContactMapper;
     private final ReservationMapper reservationMapper;
     private final DateTimeUtil dateTimeUtil;
+    private final FileService fileService;
     @Override
     public List<BoardroomResponseDto> getAllBoardrooms() {
         Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
@@ -66,6 +68,12 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
             ));
         }
         return boardroomMapper.toBoardroomResponseDtoList(boardrooms);
+    }
+
+    @Override
+    public List<BoardroomResponseDto> getLockedBoardrooms() {
+        List<Boardroom> lockedBoardrooms = boardroomRepository.findAllByLockedTrueAndDeletedFalseAndArchivedFalse();
+        return boardroomMapper.toBoardroomResponseDtoList(lockedBoardrooms);
     }
 
     @Override
@@ -98,6 +106,9 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     @Override
     public List<EquipmentResponseDto> getBoardroomEquipments(long boardroomId) {
         Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        if(boardroom.getEquipments().isEmpty()) {
+            return Collections.emptyList();
+        }
         return equipmentMapper.toEquipmentResponseDtoList(boardroom.getEquipments());
     }
 
@@ -224,12 +235,15 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
         boardroom.setInternetEnabled(boardroomDto.internetEnabled());
         boardroom.setEmail(boardroomDto.email());
         boardroom.setMeetingTypeSupported(boardroomDto.meetingTypeSupported());
-        boardroom.setPicture(Base64.getDecoder().decode(boardroomDto.picture()));
+        boardroom.setPicture(boardroomDto.picture());
         return boardroomMapper.toBoardroomResponseDto(boardroomRepository.save(boardroom)
         );
     }
 
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {
+        if(boardroom.getReservations().isEmpty()) {
+            return Collections.emptyList();
+        }
         long userId = currentUserService.getUserId();
         long boardroomAdminId = boardroom.getAdministrator().getId();
         if (currentUserService.getUserRole() == RoleType.ADMIN || boardroomAdminId == userId) {

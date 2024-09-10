@@ -53,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers("/reservations/**").hasAnyAuthority("USER", "ADMIN")
                         .requestMatchers("/equipments/**").hasAnyAuthority("USER", "ADMIN")
                         .requestMatchers("/users/**").hasAnyAuthority("USER", "ADMIN")
+                        .requestMatchers("/files/**").hasAnyAuthority("USER", "ADMIN")
+                        .requestMatchers("/upload/**").hasAnyAuthority("USER", "ADMIN")
                         .anyRequest().authenticated()
 
                 );

@@ -17,12 +17,11 @@ public class Equipment extends BaseEntity {
     @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(name = "description", length = 300)
+    @Column(name = "description", length = 1000)
     private String description;
 
-    @Lob
     @Column(name = "picture")
-    private byte[] picture;
+    private String picture;
 
     @Column(name = "video_url")
     private String videoUrl;

@@ -20,7 +20,7 @@ import java.util.List;
 @Entity
 @Table(name="boardrooms")
 public class Boardroom extends BaseEntity {
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
 
     @Column(name = "email", unique = true)
@@ -29,11 +29,10 @@ public class Boardroom extends BaseEntity {
     @Column(name = "capacity", nullable = false)
     private int capacity;
 
-    @Lob
-    @Column(name = "picture", columnDefinition = "BLOB")
-    private byte[] picture;
+    @Column(name = "picture")
+    private String picture;
 
-    @Column(name = "description", length = 300, nullable = false)
+    @Column(name = "description", length = 1000, nullable = false)
     private String description;
 
     @Column(name = "centre")
@@ -46,8 +45,9 @@ public class Boardroom extends BaseEntity {
     @Column(name = "internet_enabled", nullable = false)
     private boolean internetEnabled = true;
 
+    @Builder.Default
     @Column(name = "meeting_type_supported")
-    private String meetingTypeSupported; // contains comma separated values
+    private String meetingTypeSupported = "Physical,Hybrid"; // contains comma separated values
 
     @Builder.Default
     @Column(name = "locked", nullable = false)

@@ -19,6 +19,7 @@ public record ReservationDto(
         long boardroomId,
         boolean ictSupportRequired,
         boolean isUrgentMeeting,
+        boolean recordMeeting,
         @NotNull(message = "The field is required")
         String startDateTime,
         @NotNull(message = "The field is required")

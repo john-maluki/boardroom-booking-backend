@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,12 @@ public class BoardroomController {
     @GetMapping("/boardrooms")
     public ResponseEntity<List<BoardroomResponseDto>> getAllBoardrooms() {
         return ResponseEntity.ok(boardroomService.getAllBoardrooms());
+    }
+
+    @GetMapping("/locked-boardrooms")
+    @Operation(summary = "fetch all locked boardrooms")
+    public ResponseEntity<List<BoardroomResponseDto>> getLockedBoardrooms() {
+        return ResponseEntity.ok(boardroomService.getLockedBoardrooms());
     }
 
     @GetMapping("/boardrooms/{boardroomId}/reservations")
@@ -154,4 +161,5 @@ public class BoardroomController {
         boardroomService.unLockBoardroomById(boardroomId);
         return ResponseEntity.ok(Map.of("message", "unlocked successfully"));
     }
+
 }

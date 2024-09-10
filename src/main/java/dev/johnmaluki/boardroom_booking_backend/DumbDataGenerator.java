@@ -20,6 +20,16 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -41,8 +51,12 @@ public class DumbDataGenerator implements ApplicationRunner {
     );
     private static final List<MeetingType> MEETING_TYPE = Arrays.asList(
             MeetingType.HYBRID,
-            MeetingType.PHYSICAL,
-            MeetingType.VIRTUAL
+            MeetingType.PHYSICAL
+    );
+    private static final List<ApprovalStatus> APPROVAL_STATUSES = Arrays.asList(
+            ApprovalStatus.APPROVED,
+            ApprovalStatus.PENDING,
+            ApprovalStatus.DECLINED
     );
     private static final List<String> USERNAMES = Arrays.asList(
             "ben", "bob", "joe", "slashguy"
@@ -53,6 +67,14 @@ public class DumbDataGenerator implements ApplicationRunner {
 
     private static final List<Long> USERS_IDS = Arrays.asList(
             1L, 2L, 3L, 4L
+    );
+
+    private static final List<String> IMAGES = Arrays.asList(
+            "1.jpg", "2.jpg", "3.jpg", "4.jpg"
+    );
+
+    private static final List<String> EQUIPMENT_IMAGES = Arrays.asList(
+            "6.jpg", "6.jpg", "7.jpg", "7.jpg"
     );
 
 
@@ -106,32 +128,34 @@ public class DumbDataGenerator implements ApplicationRunner {
         roleRepository.saveAll(roles);
     }
 
-    public void createBoardrooms(){
+    public void createBoardrooms() {
         var boardrooms = new ArrayList<Boardroom>();
         for (long i = 1; i <= 3; i++) {
+            int index = random.nextInt(DumbDataGenerator.IMAGES.size());
+            String image = DumbDataGenerator.IMAGES.get(index);
             AppUser user = userRepository.findById(i).orElseThrow();
             BoardroomContact boardroomContact = BoardroomContact.builder()
                     .communicationMethod(CommunicationLineType.PHONE_EXTENSION)
-                    .contact(faker.phoneNumber().toString())
+                    .contact(faker.phoneNumber().extension())
                     .build();
 
-            Boardroom boardroom = Boardroom.builder()
-                    .administrator(user)
-                    .centre(faker.country().capital())
-                    .department(faker.company().industry())
-                    .capacity(faker.number().numberBetween(20, 60))
-                    .name(faker.name().title())
-                    .description(faker.text().text(100))
-                    .email(faker.internet().emailAddress())
-                    .picture(faker.internet().image().getBytes())
-                    .meetingTypeSupported("physical,virtual,hybrid")
-                    .build();
-            boardroom.addBoardroomContact(boardroomContact);
-            boardrooms.add(boardroom);
+                Boardroom boardroom = Boardroom.builder()
+                        .administrator(user)
+                        .centre(faker.country().capital())
+                        .department(faker.company().industry())
+                        .capacity(faker.number().numberBetween(20, 60))
+                        .name(faker.name().title())
+                        .description(faker.lorem().paragraph(8))
+                        .email(faker.internet().emailAddress())
+                        .picture(image)
+                        .meetingTypeSupported("Physical,Hybrid")
+                        .build();
+                boardroom.addBoardroomContact(boardroomContact);
+                boardrooms.add(boardroom);
         }
 
         // create one locked room
-        Boardroom boardroom = boardrooms.get(0);
+        Boardroom boardroom = boardrooms.get(1);
         LockedRoom lockedRoom = LockedRoom.builder()
                 .givenReason("The room is being renovated")
                 .build();
@@ -152,18 +176,20 @@ public class DumbDataGenerator implements ApplicationRunner {
             AppUser user = userRepository.findById(userId).orElseThrow();
             int index = random.nextInt(DumbDataGenerator.MEETING_TYPE.size());
             MeetingType meetingType = DumbDataGenerator.MEETING_TYPE.get(index);
+            int approvalIndex = random.nextInt(DumbDataGenerator.MEETING_TYPE.size());
+            ApprovalStatus approvalStatus = DumbDataGenerator.APPROVAL_STATUSES.get(approvalIndex);
             LocalDateTime startDate = faker.date().future(1, TimeUnit.DAYS)
                     .toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
             LocalDateTime endDate = startDate.plusDays(faker.number().numberBetween(1, 30));
             Reservation reservation = Reservation.builder()
                     .attendees("john@test.com,rukia@test.com")
-                    .approvalStatus(ApprovalStatus.APPROVED)
+                    .approvalStatus(approvalStatus)
                     .boardroom(boardroom)
                     .meetingType(meetingType)
                     .startLocalDateTime(startDate)
                     .endLocalDateTime(endDate)
-                    .meetingTitle(faker.text().text(10, 20))
-                    .meetingDescription(faker.text().text(30, 100))
+                    .meetingTitle(faker.lorem().paragraph(5))
+                    .meetingDescription(faker.lorem().paragraph(20))
                     .user(user)
                     .build();
             reservations.add(reservation);
@@ -184,15 +210,17 @@ public class DumbDataGenerator implements ApplicationRunner {
         for (long i = 1; i <= 20; i++) {
             int boardRoomIndex = random.nextInt(DumbDataGenerator.BOARDROOMS_IDS.size());
             long boardroomId = DumbDataGenerator.BOARDROOMS_IDS.get(boardRoomIndex);
+            int imageIndex = random.nextInt(DumbDataGenerator.EQUIPMENT_IMAGES.size());
+            String equipmentImage = DumbDataGenerator.EQUIPMENT_IMAGES.get(imageIndex);
             Boardroom boardroom = boardroomRepository.findById(boardroomId).orElseThrow();
             Equipment equipment = Equipment.builder()
                     .boardroom(boardroom)
-                    .title(faker.text().text(5, 15))
-                    .description(faker.text().text(15,30))
-                    .brand(faker.company().name())
-                    .modelNumber(faker.text().text(5, 10))
-                    .picture(faker.internet().image().getBytes())
-                    .videoUrl(faker.internet().url())
+                    .title(faker.device().modelName())
+                    .description(faker.lorem().paragraph(5))
+                    .brand(faker.device().manufacturer())
+                    .modelNumber(faker.device().serial())
+                    .picture(equipmentImage)
+                    .videoUrl("https://www.youtube.com/watch?v=hketeOJPlTs")
                     .build();
             equipments.add(equipment);
         }

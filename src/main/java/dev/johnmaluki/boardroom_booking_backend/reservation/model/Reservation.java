@@ -28,12 +28,12 @@ public class Reservation extends BaseEntity {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "approval_status")
-    private ApprovalStatus approvalStatus = ApprovalStatus.PEDDING;
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
-    @Column(name = "meeting_title", nullable = false)
+    @Column(name = "meeting_title", nullable = false, length = 1000)
     private String meetingTitle;
 
-    @Column(name = "meeting_description", nullable = false, length = 1000)
+    @Column(name = "meeting_description", nullable = false, length = 2000)
     private String meetingDescription;
 
     @Enumerated(EnumType.STRING)
@@ -50,6 +50,10 @@ public class Reservation extends BaseEntity {
     @Builder.Default
     @Column(name = "is_urgent_meeting", nullable = false)
     private boolean isUrgentMeeting = false;
+
+    @Builder.Default
+    @Column(name = "record_meeting", nullable = false)
+    private boolean recordMeeting = false;
 
     @Column(name = "meeting_link")
     private String meetingLink;

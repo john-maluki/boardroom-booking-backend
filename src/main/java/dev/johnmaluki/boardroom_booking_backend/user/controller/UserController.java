@@ -30,6 +30,14 @@ public class UserController {
         return  ResponseEntity.ok(userService.getSystemAdministrators());
     }
 
+    @PostMapping("/system-administrators")
+    @Operation(summary = "Create system administrator")
+    public ResponseEntity<SystemAdministratorResponseDto> createSystemAdministrator(
+            @RequestBody @Valid SystemAdministratorDto systemAdministratorDto
+    ) {
+        return ResponseEntity.ok(userService.createSystemAdministrator(systemAdministratorDto));
+    }
+
     @GetMapping("/kemri-employees")
     @Operation(summary = "Fetch all kemri employees")
     public ResponseEntity<List<KemriEmployeeResponseDto>> getKemriEmployees() {

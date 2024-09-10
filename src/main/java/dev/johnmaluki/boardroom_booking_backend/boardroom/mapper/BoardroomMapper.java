@@ -5,13 +5,16 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseD
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.LockedRoom;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Base64;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 public class BoardroomMapper {
+    private final BoardroomContactMapper boardroomContactMapper;
     public BoardroomResponseDto toBoardroomResponseDto(Boardroom boardroom) {
         return BoardroomResponseDto.builder()
                 .id(boardroom.getId())
@@ -24,9 +27,10 @@ public class BoardroomMapper {
                 .internetEnabled(boardroom.isInternetEnabled())
                 .tag(boardroom.getTag())
                 .description(boardroom.getDescription())
-                .picture(Base64.getEncoder().encodeToString(boardroom.getPicture()))
+                .picture(boardroom.getPicture())
                 .meetingTypeSupported(boardroom.getMeetingTypeSupported())
                 .hasOngoingMeeting(boardroom.isHasOngoingMeeting())
+                .boardroomContacts(boardroomContactMapper.toBoardroomContactResponseDtoList(boardroom.getBoardroomContacts()))
                 .build();
     }
 
@@ -39,7 +43,7 @@ public class BoardroomMapper {
                 .department(boardroomDto.department())
                 .description(boardroomDto.description())
                 .internetEnabled(boardroomDto.internetEnabled())
-                .picture(Base64.getDecoder().decode(boardroomDto.description()))
+                .picture(boardroomDto.picture())
                 .meetingTypeSupported(boardroomDto.meetingTypeSupported())
                 .build();
     }

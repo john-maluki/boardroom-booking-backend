@@ -25,7 +25,8 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getAllReservations());
     }
 
-    @GetMapping("/reservation/{reservationId}")
+    @GetMapping("/reservations/{reservationId}")
+    @Operation(summary = "Fetch reservation by its id")
     public ResponseEntity<ReservationResponseDto> getReservationById(
             @PathVariable("reservationId") long reservationId
     ) {
@@ -92,5 +93,14 @@ public class ReservationController {
             @RequestBody @Valid RescheduleReservationDto rescheduleReservationDto
     ){
         return ResponseEntity.ok(reservationService.rescheduleReservation(reservationId, rescheduleReservationDto));
+    }
+
+    @DeleteMapping("/reservations/{reservationId}")
+    @Operation(summary = "Remove reservation")
+    public ResponseEntity<Void> rescheduleReservation(
+            @PathVariable("reservationId") long reservationId
+    ){
+        reservationService.removeReservation(reservationId);
+        return ResponseEntity.noContent().build();
     }
 }
