@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @Component
 public class FileService {
-    private final String storageDir = "uploads/";
+    private final String storageDir = System.getProperty("user.home") + "/project-uploads/kemri/uploads/boardroom-backend-files/";
 
     public String saveFile(MultipartFile file) {
         try {

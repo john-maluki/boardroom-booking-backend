@@ -78,6 +78,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public ReservationResponseDto getReservationById(long reservationId) {
         Reservation reservation = this.findReservationByIdFromDb(reservationId);
+
         if (!this.hasOwnership(reservation)) {
             throw new ResourceOwnershipException("Not allowed to access");
         }
@@ -186,7 +187,9 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private boolean hasOwnership(Reservation reservation) {
-        if (currentUserService.getUserRole() == RoleType.ADMIN) {
+        boolean isAdminOrBoardroomSupervisor = currentUserService.getUserRole() == RoleType.ADMIN ||
+                currentUserService.getUserId() == reservation.getBoardroom().getAdministrator().getId();
+        if (isAdminOrBoardroomSupervisor) {
             return true;
         }
         return currentUserService.getUserId() == reservation.getUser().getId();

@@ -80,6 +80,11 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     public BoardroomResponseDto getBoardroomById(long boardroomId) {
         Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
         Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+        boardroom.setBoardroomContacts(
+                boardroom.getBoardroomContacts().stream().filter(
+                        contact -> !contact.getArchived() && !contact.getDeleted()
+                ).toList()
+        );
         boardroom.setHasOngoingMeeting(boardroomOnGoingMeetingStatuses.getOrDefault(
                 boardroom.getId(), false
         ));
@@ -161,7 +166,7 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
             AppUser user = this.getAppUserByIdFromDb(boardroomAdminDto.userId());
             boardroom.setAdministrator(user);
             user.setBoardroom(boardroom);
-            return userMapper.toUserResponseDto(user);
+            return userMapper.toUserResponseDto(boardroomRepository.save(boardroom).getAdministrator());
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateResourceException("Resource already exists.");
         }

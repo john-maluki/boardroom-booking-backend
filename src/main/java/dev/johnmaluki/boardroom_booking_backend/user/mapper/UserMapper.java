@@ -17,6 +17,7 @@ public class UserMapper {
                 .username(user.getUsername())
                 .fullName(user.getFullName())
                 .department(user.getDepartment())
+                .role(user.getRole().getAuthority().name())
                 .email(user.getEmail())
                 .tag(user.getTag())
                 .build();

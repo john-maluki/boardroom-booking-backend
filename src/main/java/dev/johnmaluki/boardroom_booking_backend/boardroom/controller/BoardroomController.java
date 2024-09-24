@@ -96,8 +96,8 @@ public class BoardroomController {
         return new ResponseEntity<>(boardroomService.createBoardroom(boardroomDto), HttpStatus.CREATED);
     }
 
-    @PostMapping("/boardrooms/{boardroomId}/administrator")
-    @Operation(summary = "Create boardroom administrator")
+    @PatchMapping("/boardrooms/{boardroomId}/administrator")
+    @Operation(summary = "Create or Change boardroom administrator")
     public ResponseEntity<UserResponseDto> createBoardroomAdministrator(
             @PathVariable("boardroomId") long boardroomId,
             @RequestBody @Valid BoardroomAdminDto boardroomAdminDto

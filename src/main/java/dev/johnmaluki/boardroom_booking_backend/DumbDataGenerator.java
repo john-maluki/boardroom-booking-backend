@@ -167,7 +167,7 @@ public class DumbDataGenerator implements ApplicationRunner {
 
     public void createReservations(){
         var reservations = new ArrayList<Reservation>();
-        for (long i = 1; i <= 50; i++) {
+        for (long i = 1; i <= 15; i++) {
             int boardRoomIndex = random.nextInt(DumbDataGenerator.BOARDROOMS_IDS.size());
             long boardroomId = DumbDataGenerator.BOARDROOMS_IDS.get(boardRoomIndex);
             Boardroom boardroom = boardroomRepository.findById(boardroomId).orElseThrow();
@@ -207,7 +207,7 @@ public class DumbDataGenerator implements ApplicationRunner {
 
     public void createBoardroomEquipment() {
         var equipments = new ArrayList<Equipment>();
-        for (long i = 1; i <= 20; i++) {
+        for (long i = 1; i <= 7; i++) {
             int boardRoomIndex = random.nextInt(DumbDataGenerator.BOARDROOMS_IDS.size());
             long boardroomId = DumbDataGenerator.BOARDROOMS_IDS.get(boardRoomIndex);
             int imageIndex = random.nextInt(DumbDataGenerator.EQUIPMENT_IMAGES.size());
