@@ -3,6 +3,7 @@ package dev.johnmaluki.boardroom_booking_backend.reservation.mapper;
 
 import dev.johnmaluki.boardroom_booking_backend.config.security.UserPrincipal;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationOverlapResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
 import dev.johnmaluki.boardroom_booking_backend.util.DateTimeUtil;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.*;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -65,6 +67,12 @@ public class ReservationMapper {
                 .recordMeeting(reservationDto.recordMeeting())
                 .startLocalDateTime(startLocalDateTime)
                 .endLocalDateTime(endLocalDateTime)
+                .build();
+    }
+
+    public ReservationOverlapResponseDto toReservationOverlapResponseDto(boolean overlap) {
+        return ReservationOverlapResponseDto.builder()
+                .overlap(overlap)
                 .build();
     }
 

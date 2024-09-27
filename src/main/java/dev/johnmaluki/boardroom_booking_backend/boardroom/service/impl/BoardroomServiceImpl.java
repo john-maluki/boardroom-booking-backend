@@ -12,12 +12,13 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.LockedRoomR
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServiceUtil;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.DuplicateResourceException;
-import dev.johnmaluki.boardroom_booking_backend.core.exception.FileUploadException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.service.CurrentUserService;
 import dev.johnmaluki.boardroom_booking_backend.core.service.FileService;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.mapper.EquipmentMapper;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationEventDateDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationOverlapResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
@@ -33,9 +34,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -243,6 +242,19 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
         boardroom.setPicture(boardroomDto.picture());
         return boardroomMapper.toBoardroomResponseDto(boardroomRepository.save(boardroom)
         );
+    }
+
+    @Override
+    public ReservationOverlapResponseDto checkBoardroomReservationOverlap(long boardroomId, ReservationEventDateDto reservationEventDateDto) {
+        LocalDateTime startLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
+        LocalDateTime endLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
+        List<Reservation> conflictingEvents = reservationRepository.findConflictingEvents(
+                boardroomId,
+                startLocalDateTime,
+                endLocalDateTime
+        );
+        return reservationMapper.toReservationOverlapResponseDto(!conflictingEvents.isEmpty());
+
     }
 
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {

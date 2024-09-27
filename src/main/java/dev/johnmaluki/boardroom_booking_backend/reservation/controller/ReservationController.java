@@ -90,9 +90,9 @@ public class ReservationController {
     @Operation(summary = "Reschedule reservation")
     public ResponseEntity<ReservationResponseDto> rescheduleReservation(
             @PathVariable("reservationId") long reservationId,
-            @RequestBody @Valid RescheduleReservationDto rescheduleReservationDto
+            @RequestBody @Valid ReservationEventDateDto reservationEventDateDto
     ){
-        return ResponseEntity.ok(reservationService.rescheduleReservation(reservationId, rescheduleReservationDto));
+        return ResponseEntity.ok(reservationService.rescheduleReservation(reservationId, reservationEventDateDto));
     }
 
     @DeleteMapping("/reservations/{reservationId}")

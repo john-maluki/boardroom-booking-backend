@@ -1,6 +1,7 @@
 package dev.johnmaluki.boardroom_booking_backend.reservation.repository;
 
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -31,4 +32,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "GROUP BY e.boardroom.id")
     List<Object[]> findBoardroomOngoingMeetingStatus(@Param("currentDateTime") LocalDateTime currentDateTime);
     List<Reservation> findAllByOrderByStartLocalDateTimeDesc();
+
+    @Query("SELECT r FROM Reservation r WHERE r.boardroom.id = :boardroomId " +
+            "AND (r.startLocalDateTime < :endLocalDateTime AND r.endLocalDateTime > :startLocalDateTime)")
+    List<Reservation> findConflictingEvents(
+            @Param("boardroomId") Long boardroomId,
+            @Param("startLocalDateTime") LocalDateTime startLocalDateTime,
+            @Param("endLocalDateTime") LocalDateTime endLocalDateTime);
 }

@@ -146,9 +146,9 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public ReservationResponseDto rescheduleReservation(long reservationId, RescheduleReservationDto rescheduleReservationDto) {
-        LocalDateTime startLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(rescheduleReservationDto.startDateTime());
-        LocalDateTime endLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(rescheduleReservationDto.endDateTime());
+    public ReservationResponseDto rescheduleReservation(long reservationId, ReservationEventDateDto reservationEventDateDto) {
+        LocalDateTime startLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
+        LocalDateTime endLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
         Reservation reservation = this.findReservationByIdFromDb(reservationId);
         reservation.setStartLocalDateTime(startLocalDateTime);
         reservation.setEndLocalDateTime(endLocalDateTime);

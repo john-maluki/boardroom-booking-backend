@@ -3,6 +3,8 @@ package dev.johnmaluki.boardroom_booking_backend.boardroom.controller;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.*;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationEventDateDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationOverlapResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationService;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
@@ -14,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,15 @@ public class BoardroomController {
             @PathVariable("boardroomId") long boardroomId
     ) {
         return ResponseEntity.ok(boardroomService.getBoardroomReservations(boardroomId));
+    }
+
+    @PostMapping("/boardrooms/{boardroomId}/event-overlap")
+    @Operation(summary = "Check reservation event overlap")
+    public ResponseEntity<ReservationOverlapResponseDto> checkReservationEventOverlap(
+            @PathVariable("boardroomId") long boardroomId,
+            @RequestBody @Valid ReservationEventDateDto reservationEventDateDto
+    ){
+        return ResponseEntity.ok(boardroomService.checkBoardroomReservationOverlap(boardroomId, reservationEventDateDto));
     }
 
     @GetMapping("/boardrooms/{boardroomId}/archived-reservations")
