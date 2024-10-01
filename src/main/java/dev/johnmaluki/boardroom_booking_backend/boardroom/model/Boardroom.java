@@ -56,7 +56,8 @@ public class Boardroom extends BaseEntity {
     @Transient
     private boolean hasOngoingMeeting;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "administrator_id")
     private AppUser administrator;
 

@@ -46,8 +46,9 @@ public class AppUser extends BaseEntity {
     private Role role;
 
     @ToString.Exclude
-    @OneToOne(mappedBy = "administrator", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    private Boardroom boardroom;
+    @Builder.Default
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "administrator")
+    private List<Boardroom> boardrooms = new ArrayList<>();
 
     @ToString.Exclude
     @Builder.Default
@@ -69,6 +70,24 @@ public class AppUser extends BaseEntity {
         this.reservations.removeIf(
                 reservation -> {
                     reservation.setUser(null);
+                    return true;
+                });
+    }
+
+    public void addBoardroom(@NotNull Boardroom boardroom){
+        this.boardrooms.add(boardroom);
+        boardroom.setAdministrator(this);
+    }
+
+    public void removeBoardroom(@NotNull Boardroom boardroom){
+        boardroom.setAdministrator(null);
+        this.boardrooms.remove(boardroom);
+    }
+
+    public void removeBoardrooms() {
+        this.boardrooms.removeIf(
+                boardroom -> {
+                    boardroom.setAdministrator(null);
                     return true;
                 });
     }

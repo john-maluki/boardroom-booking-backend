@@ -163,8 +163,7 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
         try {
             Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
             AppUser user = this.getAppUserByIdFromDb(boardroomAdminDto.userId());
-            boardroom.setAdministrator(user);
-            user.setBoardroom(boardroom);
+            user.addBoardroom(boardroom);
             return userMapper.toUserResponseDto(boardroomRepository.save(boardroom).getAdministrator());
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateResourceException("Resource already exists.");
