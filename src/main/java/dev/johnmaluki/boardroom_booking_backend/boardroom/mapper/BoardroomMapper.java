@@ -1,6 +1,7 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.mapper;
 
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomEventFilterResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
@@ -58,5 +59,17 @@ public class BoardroomMapper {
                 .boardroomId(lockedRoom.getBoardroom().getId())
                 .givenReason(lockedRoom.getGivenReason())
                 .build();
+    }
+
+    public BoardroomEventFilterResponseDto toBoardroomEventFilterResponseDto(Boardroom boardroom) {
+        return BoardroomEventFilterResponseDto.builder()
+                .id(boardroom.getId())
+                .boardroomName(boardroom.getName())
+                .tag(boardroom.getTag())
+                .build();
+    }
+
+    public List<BoardroomEventFilterResponseDto> toBoardroomEventFilterResponseDtoList(List<Boardroom> boardrooms) {
+        return boardrooms.stream().map(this::toBoardroomEventFilterResponseDto).toList();
     }
 }

@@ -6,6 +6,7 @@ import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationEvent
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationOverlapResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -28,5 +29,6 @@ public interface BoardroomService {
     void unLockBoardroomById(long boardroomId);
     BoardroomContactResponseDto updateBoardroomContact(long boardroomId, long contactId, BoardroomContactDto boardroomContactDto);
     BoardroomResponseDto updateBoardroomById(long boardroomId, BoardroomDto boardroomDto);
-   ReservationOverlapResponseDto checkBoardroomReservationOverlap(long boardroomId, ReservationEventDateDto reservationEventDateDto);
+    ReservationOverlapResponseDto checkBoardroomReservationOverlap(long boardroomId, ReservationEventDateDto reservationEventDateDto);
+    List<BoardroomEventFilterResponseDto> filterAvailableBoardroomsByEventDate(ReservationEventDateDto reservationEventDateDto);
 }

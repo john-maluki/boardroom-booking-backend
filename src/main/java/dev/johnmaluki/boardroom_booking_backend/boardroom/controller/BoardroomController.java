@@ -172,4 +172,12 @@ public class BoardroomController {
         return ResponseEntity.ok(Map.of("message", "unlocked successfully"));
     }
 
+    @PostMapping("/boardrooms/filter_by_event_date")
+    @Operation(summary = "Filter boardrooms by event date ")
+    public ResponseEntity<List<BoardroomEventFilterResponseDto>> checkAvailableBoardroomByEventDate(
+            @RequestBody @Valid ReservationEventDateDto reservationEventDateDto
+    ) {
+        return ResponseEntity.ok(boardroomService.filterAvailableBoardroomsByEventDate(reservationEventDateDto));
+    }
+
 }

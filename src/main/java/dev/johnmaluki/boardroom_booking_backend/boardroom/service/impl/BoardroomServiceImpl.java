@@ -247,13 +247,26 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     public ReservationOverlapResponseDto checkBoardroomReservationOverlap(long boardroomId, ReservationEventDateDto reservationEventDateDto) {
         LocalDateTime startLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
         LocalDateTime endLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
-        List<Reservation> conflictingEvents = reservationRepository.findConflictingEvents(
+        List<Reservation> conflictingEvents = reservationRepository.findBoardroomConflictingEvents(
                 boardroomId,
                 startLocalDateTime,
                 endLocalDateTime
         );
         return reservationMapper.toReservationOverlapResponseDto(!conflictingEvents.isEmpty());
+    }
 
+    @Override
+    public List<BoardroomEventFilterResponseDto> filterAvailableBoardroomsByEventDate(ReservationEventDateDto reservationEventDateDto) {
+        LocalDateTime startLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
+        LocalDateTime endLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
+        List<Reservation> conflictingReservations = reservationRepository.findConflictingEvents(
+                startLocalDateTime,
+                endLocalDateTime
+        );
+        List<Boardroom> boardrooms = conflictingReservations.stream().map(Reservation::getBoardroom).toList();
+        boardrooms = boardrooms.stream()
+                .collect(Collectors.toMap(Boardroom::getId, boardroom -> boardroom, (existing, replacement) -> existing)).values().stream().toList();
+        return boardroomMapper.toBoardroomEventFilterResponseDtoList(boardrooms);
     }
 
     private List<Reservation> filterReservationByUser(Boardroom boardroom) {
