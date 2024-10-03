@@ -11,9 +11,8 @@ public class BackupScheduler {
     private final DatabaseBackupService databaseBackupService;
 
 
-
-//    @Scheduled(fixedRate = 50 * 1 * 1 * 1000) // 10 hours
-    @Scheduled(cron = "0 0 2 * * ?") // Schedule backup to run daily at 2 AM
+    //@Scheduled(fixedRate = 24 * 60 * 60 * 1000) // 24 hours
+    @Scheduled(cron = "0 0 1 * * ?")
     public void scheduleDatabaseBackup() {
         databaseBackupService.performDatabaseBackup();
     }

@@ -2,6 +2,7 @@ package dev.johnmaluki.boardroom_booking_backend.core.service;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +13,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.stream.Stream;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class DatabaseBackupService {
@@ -56,13 +58,14 @@ public class DatabaseBackupService {
             // Wait for the process to complete
             int exitCode = process.waitFor();
             if (exitCode == 0) {
-                System.out.println("Backup completed: " + backupFileName);
+                log.info("Backup completed: {}", backupFileName);
                 Path pathDir = Path.of(USER_HOME_DIRECTORY + backupDirectory);
                 this.deleteOldBackups(pathDir);
             } else {
-                System.err.println("Backup failed with exit code: " + exitCode);
+                log.error("Backup completed with error: {}", backupFileName);
             }
         } catch (IOException | InterruptedException e) {
+            log.error("Backup error: {}", e.getMessage());
             e.printStackTrace();
         }
     }
