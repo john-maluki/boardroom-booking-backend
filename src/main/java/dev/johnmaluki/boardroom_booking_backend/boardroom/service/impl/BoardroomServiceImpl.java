@@ -43,296 +43,304 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceUtil {
-    public static final String RESOURCE_NOT_FOUND = "Resource not found";
-    private final CurrentUserService currentUserService;
-    private final BoardroomRepository boardroomRepository;
-    private final ReservationRepository reservationRepository;
-    private final AppUserRepository userRepository;
-    private final LockedRoomRepository lockedRoomRepository;
-    private final BoardroomContactRepository boardroomContactRepository;
-    private final BoardroomMapper boardroomMapper;
-    private final EquipmentMapper equipmentMapper;
-    private final UserMapper userMapper;
-    private final BoardroomContactMapper boardroomContactMapper;
-    private final ReservationMapper reservationMapper;
-    private final DateTimeUtil dateTimeUtil;
-    private final FileService fileService;
-    @Override
-    public List<BoardroomResponseDto> getAllBoardrooms() {
-        Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
-        List<Boardroom> boardrooms = boardroomRepository.findByArchivedFalseAndDeletedFalse();
-        for (Boardroom boardroom : boardrooms) {
-            boardroom.setHasOngoingMeeting(boardroomOnGoingMeetingStatuses.getOrDefault(
-                    boardroom.getId(), false
-            ));
-        }
-        return boardroomMapper.toBoardroomResponseDtoList(boardrooms);
+  public static final String RESOURCE_NOT_FOUND = "Resource not found";
+  private final CurrentUserService currentUserService;
+  private final BoardroomRepository boardroomRepository;
+  private final ReservationRepository reservationRepository;
+  private final AppUserRepository userRepository;
+  private final LockedRoomRepository lockedRoomRepository;
+  private final BoardroomContactRepository boardroomContactRepository;
+  private final BoardroomMapper boardroomMapper;
+  private final EquipmentMapper equipmentMapper;
+  private final UserMapper userMapper;
+  private final BoardroomContactMapper boardroomContactMapper;
+  private final ReservationMapper reservationMapper;
+  private final DateTimeUtil dateTimeUtil;
+  private final FileService fileService;
+
+  @Override
+  public List<BoardroomResponseDto> getAllBoardrooms() {
+    Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
+    List<Boardroom> boardrooms = boardroomRepository.findByArchivedFalseAndDeletedFalse();
+    for (Boardroom boardroom : boardrooms) {
+      boardroom.setHasOngoingMeeting(
+          boardroomOnGoingMeetingStatuses.getOrDefault(boardroom.getId(), false));
     }
+    return boardroomMapper.toBoardroomResponseDtoList(boardrooms);
+  }
 
-    @Override
-    public List<BoardroomResponseDto> getLockedBoardrooms() {
-        List<Boardroom> lockedBoardrooms = boardroomRepository.findAllByLockedTrueAndDeletedFalseAndArchivedFalse();
-        return boardroomMapper.toBoardroomResponseDtoList(lockedBoardrooms);
+  @Override
+  public List<BoardroomResponseDto> getLockedBoardrooms() {
+    List<Boardroom> lockedBoardrooms =
+        boardroomRepository.findAllByLockedTrueAndDeletedFalseAndArchivedFalse();
+    return boardroomMapper.toBoardroomResponseDtoList(lockedBoardrooms);
+  }
+
+  @Override
+  public BoardroomResponseDto getBoardroomById(long boardroomId) {
+    Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    boardroom.setBoardroomContacts(
+        boardroom.getBoardroomContacts().stream()
+            .filter(contact -> !contact.getArchived() && !contact.getDeleted())
+            .toList());
+    boardroom.setHasOngoingMeeting(
+        boardroomOnGoingMeetingStatuses.getOrDefault(boardroom.getId(), false));
+    return boardroomMapper.toBoardroomResponseDto(boardroom);
+  }
+
+  @Override
+  public LockedBoardroomResponseDto getLockedBoardroomReasonById(long boardroomId) {
+    LockedRoom lockedRoom = this.getLockedRoomByBoardroomId(boardroomId);
+    return boardroomMapper.toLockedBoardroomResponseDto(lockedRoom);
+  }
+
+  @Override
+  public List<ReservationResponseDto> getBoardroomReservations(long boardroomId) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    List<Reservation> reservations =
+        new ArrayList<>(
+            this.filterReservationByUser(boardroom).stream()
+                .filter(reservation -> !reservation.getArchived() && !reservation.getDeleted())
+                .toList());
+    reservations.sort(Comparator.comparing(Reservation::getCreatedAt).reversed());
+    return reservationMapper.toReservationResponseDtoList(reservations);
+  }
+
+  @Override
+  public List<EquipmentResponseDto> getBoardroomEquipments(long boardroomId) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    if (boardroom.getEquipments().isEmpty()) {
+      return Collections.emptyList();
     }
+    return equipmentMapper.toEquipmentResponseDtoList(boardroom.getEquipments());
+  }
 
-    @Override
-    public BoardroomResponseDto getBoardroomById(long boardroomId) {
-        Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        boardroom.setBoardroomContacts(
-                boardroom.getBoardroomContacts().stream().filter(
-                        contact -> !contact.getArchived() && !contact.getDeleted()
-                ).toList()
-        );
-        boardroom.setHasOngoingMeeting(boardroomOnGoingMeetingStatuses.getOrDefault(
-                boardroom.getId(), false
-        ));
-        return boardroomMapper.toBoardroomResponseDto(boardroom);
+  @Override
+  public List<ReservationResponseDto> getBoardroomArchivedReservations(long boardroomId) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    return reservationMapper.toReservationResponseDtoList(
+        this.filterReservationByUser(boardroom).stream()
+            .filter(reservation -> reservation.getArchived() && !reservation.getDeleted())
+            .toList());
+  }
+
+  @Override
+  public UserResponseDto getBoardroomAdministrator(long boardroomId) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    AppUser user =
+        Optional.ofNullable(boardroom.getAdministrator())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Boardroom contains no administrator"));
+    return userMapper.toUserResponseDto(user);
+  }
+
+  @Override
+  public List<BoardroomContactResponseDto> getBoardroomContacts(long boardroomId) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    return boardroomContactMapper.toBoardroomContactResponseDtoList(
+        boardroom.getBoardroomContacts().stream()
+            .filter(
+                boardroomContact ->
+                    !boardroomContact.getArchived() && !boardroomContact.getDeleted())
+            .toList());
+  }
+
+  @Override
+  public BoardroomResponseDto createBoardroom(BoardroomDto boardroomDto) {
+    try {
+      Boardroom boardroom = boardroomMapper.toBoardroom(boardroomDto);
+      return boardroomMapper.toBoardroomResponseDto(boardroomRepository.save(boardroom));
+    } catch (DataIntegrityViolationException e) {
+      throw new DuplicateResourceException("Resource already exists.");
     }
+  }
 
-    @Override
-    public LockedBoardroomResponseDto getLockedBoardroomReasonById(long boardroomId) {
-        LockedRoom lockedRoom = this.getLockedRoomByBoardroomId(boardroomId);
-        return boardroomMapper.toLockedBoardroomResponseDto(lockedRoom);
-
+  @Override
+  @Transactional
+  public UserResponseDto createBoardroomAdministrator(
+      long boardroomId, BoardroomAdminDto boardroomAdminDto) {
+    try {
+      Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+      AppUser user = this.getAppUserByIdFromDb(boardroomAdminDto.userId());
+      user.addBoardroom(boardroom);
+      return userMapper.toUserResponseDto(boardroomRepository.save(boardroom).getAdministrator());
+    } catch (DataIntegrityViolationException e) {
+      throw new DuplicateResourceException("Resource already exists.");
     }
+  }
 
-    @Override
-    public List<ReservationResponseDto> getBoardroomReservations(long boardroomId) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        return reservationMapper.toReservationResponseDtoList(
-                this.filterReservationByUser(boardroom).stream()
-                        .filter(reservation -> !reservation.getArchived() && !reservation.getDeleted())
-                        .toList()
-        );
+  @Override
+  public BoardroomContactResponseDto createBoardroomContact(
+      long boardroomId, BoardroomContactDto boardroomContactDto) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    BoardroomContact boardroomContact =
+        boardroomContactMapper.toBoardroomContact(boardroomContactDto);
+    boardroom.addBoardroomContact(boardroomContact);
+    boardroomContact = boardroomContactRepository.save(boardroomContact);
+    return boardroomContactMapper.toBoardroomContactResponseDto(boardroomContact);
+  }
+
+  @Override
+  public void removeBoardroomById(long boardroomId) {
+    this.deleteBoardroomSoftly(boardroomId);
+  }
+
+  @Override
+  public void removeBoardroomContact(long boardroomId, long contactId) {
+    this.deleteBoardroomContactSoftly(boardroomId, contactId);
+  }
+
+  @Override
+  public LockedBoardroomResponseDto lockBoardroomById(
+      long boardroomId, LockMessageDto lockMessageDto) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    LockedRoom lockedRoom =
+        LockedRoom.builder().locked(true).givenReason(lockMessageDto.givenReason()).build();
+    boardroom.setLocked(true);
+    LockedRoom savedLockedRoom =
+        lockedRoomRepository
+            .getByBoardroomAndLockedTrueAndArchivedFalseAndDeletedFalse(boardroom)
+            .orElse(lockedRoom);
+    savedLockedRoom.setGivenReason(lockMessageDto.givenReason());
+    boardroom.addLockedBoardroom(savedLockedRoom);
+    return boardroomMapper.toLockedBoardroomResponseDto(lockedRoomRepository.save(savedLockedRoom));
+  }
+
+  @Override
+  public void unLockBoardroomById(long boardroomId) {
+    LockedRoom lockedRoom = this.getLockedRoomByBoardroomId(boardroomId);
+    lockedRoom.setLocked(false);
+    lockedRoom.getBoardroom().setLocked(false);
+    lockedRoomRepository.save(lockedRoom);
+  }
+
+  @Override
+  public BoardroomContactResponseDto updateBoardroomContact(
+      long boardroomId, long contactId, BoardroomContactDto boardroomContactDto) {
+    BoardroomContact boardroomContact =
+        boardroomContactRepository.getContactRecord(contactId, boardroomId);
+    boardroomContact.setContact(boardroomContactDto.contact());
+    return boardroomContactMapper.toBoardroomContactResponseDto(
+        boardroomContactRepository.save(boardroomContact));
+  }
+
+  @Override
+  public BoardroomResponseDto updateBoardroomById(long boardroomId, BoardroomDto boardroomDto) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    boardroom.setName(boardroomDto.name());
+    boardroom.setCentre(boardroomDto.centre());
+    boardroom.setDepartment(boardroomDto.department());
+    boardroom.setCapacity(boardroomDto.capacity());
+    boardroom.setDescription(boardroomDto.description());
+    boardroom.setInternetEnabled(boardroomDto.internetEnabled());
+    boardroom.setEmail(boardroomDto.email());
+    boardroom.setMeetingTypeSupported(boardroomDto.meetingTypeSupported());
+    boardroom.setPicture(boardroomDto.picture());
+    return boardroomMapper.toBoardroomResponseDto(boardroomRepository.save(boardroom));
+  }
+
+  @Override
+  public ReservationOverlapResponseDto checkBoardroomReservationOverlap(
+      long boardroomId, ReservationEventDateDto reservationEventDateDto) {
+    LocalDateTime startLocalDateTime =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
+    LocalDateTime endLocalDateTime =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
+    List<Reservation> conflictingEvents =
+        reservationRepository.findBoardroomConflictingEvents(
+            boardroomId, startLocalDateTime, endLocalDateTime);
+    return reservationMapper.toReservationOverlapResponseDto(!conflictingEvents.isEmpty());
+  }
+
+  @Override
+  public List<BoardroomEventFilterResponseDto> filterAvailableBoardroomsByEventDate(
+      ReservationEventDateDto reservationEventDateDto) {
+    LocalDateTime startLocalDateTime =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
+    LocalDateTime endLocalDateTime =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
+    List<Reservation> conflictingReservations =
+        reservationRepository.findConflictingEvents(startLocalDateTime, endLocalDateTime);
+    List<Boardroom> boardrooms =
+        conflictingReservations.stream().map(Reservation::getBoardroom).toList();
+    boardrooms =
+        boardrooms.stream()
+            .collect(
+                Collectors.toMap(
+                    Boardroom::getId, boardroom -> boardroom, (existing, replacement) -> existing))
+            .values()
+            .stream()
+            .toList();
+    return boardroomMapper.toBoardroomEventFilterResponseDtoList(boardrooms);
+  }
+
+  private List<Reservation> filterReservationByUser(Boardroom boardroom) {
+    if (boardroom.getReservations().isEmpty()) {
+      return Collections.emptyList();
     }
-
-    @Override
-    public List<EquipmentResponseDto> getBoardroomEquipments(long boardroomId) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        if(boardroom.getEquipments().isEmpty()) {
-            return Collections.emptyList();
-        }
-        return equipmentMapper.toEquipmentResponseDtoList(boardroom.getEquipments());
+    long userId = currentUserService.getUserId();
+    long boardroomAdminId = boardroom.getAdministrator().getId();
+    if (currentUserService.getUserRole() == RoleType.ADMIN || boardroomAdminId == userId) {
+      return boardroom.getReservations();
+    } else {
+      return boardroom.getReservations().stream()
+          .filter(reservation -> reservation.getUser().getId() == userId)
+          .toList();
     }
+  }
 
-    @Override
-    public List<ReservationResponseDto> getBoardroomArchivedReservations(long boardroomId) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        return reservationMapper.toReservationResponseDtoList(
-                this.filterReservationByUser(boardroom).stream()
-                        .filter(reservation -> reservation.getArchived() && !reservation.getDeleted())
-                        .toList()
-        );
+  private Boardroom getBoardroomByIdFromDb(long boardroomId) {
+    return boardroomRepository
+        .findByIdAndArchivedFalseAndDeletedFalse(boardroomId)
+        .orElseThrow(() -> new ResourceNotFoundException(RESOURCE_NOT_FOUND));
+  }
+
+  private Map<Long, Boolean> getOngoingMeetingStatuses() {
+    LocalDateTime currentDateTime = dateTimeUtil.getCurrentLocalDateTimeUtc();
+    List<Object[]> ongoingMeetingStatus =
+        reservationRepository.findBoardroomOngoingMeetingStatus(currentDateTime);
+    return ongoingMeetingStatus.stream()
+        .collect(Collectors.toMap(status -> (Long) status[0], status -> (Boolean) status[1]));
+  }
+
+  private AppUser getAppUserByIdFromDb(long userId) {
+    return userRepository
+        .findByIdAndArchivedFalseAndDeletedFalse(userId)
+        .orElseThrow(() -> new ResourceNotFoundException(RESOURCE_NOT_FOUND));
+  }
+
+  @Override
+  public Boardroom findBoardroomById(long boardroomId) {
+    return this.getBoardroomByIdFromDb(boardroomId);
+  }
+
+  private void deleteBoardroomSoftly(long boardroomId) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    boardroom.setDeleted(true);
+    boardroomRepository.save(boardroom);
+  }
+
+  private void deleteBoardroomContactSoftly(long boardroomId, long contactId) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    BoardroomContact boardroomContact =
+        boardroom.getBoardroomContacts().stream()
+            .filter(contact -> contact.getId() == contactId)
+            .toList()
+            .get(0);
+    boolean isDeleted = boardroomContact.getDeleted();
+    if (isDeleted) {
+      throw new ResourceNotFoundException("Contact not found");
+    } else {
+      boardroomContact.setDeleted(true);
+      boardroomRepository.save(boardroom);
     }
+  }
 
-    @Override
-    public UserResponseDto getBoardroomAdministrator(long boardroomId) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        AppUser user = Optional.ofNullable(boardroom.getAdministrator()).orElseThrow(
-                () -> new ResourceNotFoundException("Boardroom contains no administrator")
-        );
-        return userMapper.toUserResponseDto(user);
-    }
-
-    @Override
-    public List<BoardroomContactResponseDto> getBoardroomContacts(long boardroomId) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        return boardroomContactMapper.toBoardroomContactResponseDtoList(
-                boardroom.getBoardroomContacts().stream()
-                        .filter(boardroomContact -> !boardroomContact.getArchived() && !boardroomContact.getDeleted())
-                        .toList()
-        );
-    }
-
-    @Override
-    public BoardroomResponseDto createBoardroom(BoardroomDto boardroomDto) {
-        try {
-            Boardroom boardroom = boardroomMapper.toBoardroom(boardroomDto);
-            return boardroomMapper.toBoardroomResponseDto(
-                    boardroomRepository.save(boardroom)
-            );
-        } catch (DataIntegrityViolationException e) {
-            throw new DuplicateResourceException("Resource already exists.");
-        }
-    }
-
-    @Override
-    @Transactional
-    public UserResponseDto createBoardroomAdministrator(long boardroomId, BoardroomAdminDto boardroomAdminDto) {
-        try {
-            Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-            AppUser user = this.getAppUserByIdFromDb(boardroomAdminDto.userId());
-            user.addBoardroom(boardroom);
-            return userMapper.toUserResponseDto(boardroomRepository.save(boardroom).getAdministrator());
-        } catch (DataIntegrityViolationException e) {
-            throw new DuplicateResourceException("Resource already exists.");
-        }
-    }
-
-    @Override
-    public BoardroomContactResponseDto createBoardroomContact(long boardroomId, BoardroomContactDto boardroomContactDto) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        BoardroomContact boardroomContact = boardroomContactMapper.toBoardroomContact(boardroomContactDto);
-        boardroom.addBoardroomContact(boardroomContact);
-        boardroomContact = boardroomContactRepository.save(boardroomContact);
-        return boardroomContactMapper.toBoardroomContactResponseDto(boardroomContact);
-    }
-
-    @Override
-    public void removeBoardroomById(long boardroomId) {
-        this.deleteBoardroomSoftly(boardroomId);
-    }
-
-    @Override
-    public void removeBoardroomContact(long boardroomId, long contactId) {
-        this.deleteBoardroomContactSoftly(boardroomId, contactId);
-    }
-
-    @Override
-    public LockedBoardroomResponseDto lockBoardroomById(long boardroomId, LockMessageDto lockMessageDto) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        LockedRoom lockedRoom = LockedRoom.builder()
-                .locked(true)
-                .givenReason(lockMessageDto.givenReason())
-                .build();
-        boardroom.setLocked(true);
-        LockedRoom savedLockedRoom = lockedRoomRepository.getByBoardroomAndLockedTrueAndArchivedFalseAndDeletedFalse(boardroom)
-                .orElse(lockedRoom);
-        savedLockedRoom.setGivenReason(lockMessageDto.givenReason());
-        boardroom.addLockedBoardroom(savedLockedRoom);
-        return boardroomMapper.toLockedBoardroomResponseDto(
-                lockedRoomRepository.save(savedLockedRoom)
-        );
-    }
-
-    @Override
-    public void unLockBoardroomById(long boardroomId) {
-        LockedRoom lockedRoom = this.getLockedRoomByBoardroomId(boardroomId);
-        lockedRoom.setLocked(false);
-        lockedRoom.getBoardroom().setLocked(false);
-        lockedRoomRepository.save(lockedRoom);
-    }
-
-    @Override
-    public BoardroomContactResponseDto updateBoardroomContact(
-            long boardroomId,
-            long contactId,
-            BoardroomContactDto boardroomContactDto
-    ) {
-        BoardroomContact boardroomContact = boardroomContactRepository.getContactRecord(contactId, boardroomId);
-        boardroomContact.setContact(boardroomContactDto.contact());
-        return boardroomContactMapper.toBoardroomContactResponseDto(
-                boardroomContactRepository.save(boardroomContact)
-        );
-    }
-
-    @Override
-    public BoardroomResponseDto updateBoardroomById(long boardroomId, BoardroomDto boardroomDto) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        boardroom.setName(boardroomDto.name());
-        boardroom.setCentre(boardroomDto.centre());
-        boardroom.setDepartment(boardroomDto.department());
-        boardroom.setCapacity(boardroomDto.capacity());
-        boardroom.setDescription(boardroomDto.description());
-        boardroom.setInternetEnabled(boardroomDto.internetEnabled());
-        boardroom.setEmail(boardroomDto.email());
-        boardroom.setMeetingTypeSupported(boardroomDto.meetingTypeSupported());
-        boardroom.setPicture(boardroomDto.picture());
-        return boardroomMapper.toBoardroomResponseDto(boardroomRepository.save(boardroom)
-        );
-    }
-
-    @Override
-    public ReservationOverlapResponseDto checkBoardroomReservationOverlap(long boardroomId, ReservationEventDateDto reservationEventDateDto) {
-        LocalDateTime startLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
-        LocalDateTime endLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
-        List<Reservation> conflictingEvents = reservationRepository.findBoardroomConflictingEvents(
-                boardroomId,
-                startLocalDateTime,
-                endLocalDateTime
-        );
-        return reservationMapper.toReservationOverlapResponseDto(!conflictingEvents.isEmpty());
-    }
-
-    @Override
-    public List<BoardroomEventFilterResponseDto> filterAvailableBoardroomsByEventDate(ReservationEventDateDto reservationEventDateDto) {
-        LocalDateTime startLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
-        LocalDateTime endLocalDateTime = dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
-        List<Reservation> conflictingReservations = reservationRepository.findConflictingEvents(
-                startLocalDateTime,
-                endLocalDateTime
-        );
-        List<Boardroom> boardrooms = conflictingReservations.stream().map(Reservation::getBoardroom).toList();
-        boardrooms = boardrooms.stream()
-                .collect(Collectors.toMap(Boardroom::getId, boardroom -> boardroom, (existing, replacement) -> existing)).values().stream().toList();
-        return boardroomMapper.toBoardroomEventFilterResponseDtoList(boardrooms);
-    }
-
-    private List<Reservation> filterReservationByUser(Boardroom boardroom) {
-        if(boardroom.getReservations().isEmpty()) {
-            return Collections.emptyList();
-        }
-        long userId = currentUserService.getUserId();
-        long boardroomAdminId = boardroom.getAdministrator().getId();
-        if (currentUserService.getUserRole() == RoleType.ADMIN || boardroomAdminId == userId) {
-            return boardroom.getReservations();
-        } else {
-            return boardroom.getReservations().stream().filter(
-                    reservation -> reservation.getUser().getId() == userId
-            ).toList();
-        }
-    }
-
-    private Boardroom getBoardroomByIdFromDb(long boardroomId) {
-        return boardroomRepository.findByIdAndArchivedFalseAndDeletedFalse(boardroomId).orElseThrow(
-                () -> new ResourceNotFoundException(RESOURCE_NOT_FOUND));
-    }
-
-    private Map<Long, Boolean> getOngoingMeetingStatuses() {
-        LocalDateTime currentDateTime = dateTimeUtil.getCurrentLocalDateTimeUtc();
-        List<Object[]> ongoingMeetingStatus = reservationRepository.findBoardroomOngoingMeetingStatus(currentDateTime);
-        return ongoingMeetingStatus.stream()
-                .collect(Collectors.toMap(
-                        status -> (Long) status[0],
-                        status -> (Boolean) status[1]
-                ));
-    }
-
-    private AppUser getAppUserByIdFromDb(long userId) {
-        return userRepository.findByIdAndArchivedFalseAndDeletedFalse(userId).orElseThrow(
-                () -> new ResourceNotFoundException(RESOURCE_NOT_FOUND));
-    }
-
-    @Override
-    public Boardroom findBoardroomById(long boardroomId) {
-        return this.getBoardroomByIdFromDb(boardroomId);
-    }
-
-    private void deleteBoardroomSoftly(long boardroomId) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        boardroom.setDeleted(true);
-        boardroomRepository.save(boardroom);
-    }
-
-    private void deleteBoardroomContactSoftly(long boardroomId, long contactId) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        BoardroomContact boardroomContact = boardroom.getBoardroomContacts().stream()
-                        .filter( contact -> contact.getId() == contactId)
-                .toList().get(0);
-        boolean isDeleted = boardroomContact.getDeleted();
-        if (isDeleted) {
-            throw new ResourceNotFoundException("Contact not found");
-        } else {
-            boardroomContact.setDeleted(true);
-            boardroomRepository.save(boardroom);
-        }
-
-    }
-
-    private LockedRoom getLockedRoomByBoardroomId(long boardroomId) {
-        Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-        return lockedRoomRepository.getByBoardroomAndLockedTrueAndArchivedFalseAndDeletedFalse(boardroom)
-                .orElseThrow(() -> new ResourceNotFoundException("Locked room not found"));
-    }
+  private LockedRoom getLockedRoomByBoardroomId(long boardroomId) {
+    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
+    return lockedRoomRepository
+        .getByBoardroomAndLockedTrueAndArchivedFalseAndDeletedFalse(boardroom)
+        .orElseThrow(() -> new ResourceNotFoundException("Locked room not found"));
+  }
 }

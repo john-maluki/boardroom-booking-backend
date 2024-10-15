@@ -8,8 +8,8 @@ import org.springframework.web.servlet.view.RedirectView;
 @RestController
 @Hidden
 public class DefaultController {
-    @GetMapping("/")
-    public RedirectView redirectToDefault() {
-        return new RedirectView("/swagger-ui/index.html");
-    }
+  @GetMapping("/")
+  public RedirectView redirectToDefault() {
+    return new RedirectView("/swagger-ui/index.html");
+  }
 }

@@ -9,24 +9,24 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CurrentUserService {
-    private UserPrincipal getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return  (UserPrincipal) authentication.getPrincipal();
-    }
+  private UserPrincipal getCurrentUser() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    return (UserPrincipal) authentication.getPrincipal();
+  }
 
-    public long getUserId() {
-        return getCurrentUser().getUserId();
-    }
+  public long getUserId() {
+    return getCurrentUser().getUserId();
+  }
 
-    public RoleType getUserRole() {
-        return this.getCurrentUser().getUser().getRole().getAuthority();
-    }
+  public RoleType getUserRole() {
+    return this.getCurrentUser().getUser().getRole().getAuthority();
+  }
 
-    public AppUser getAppUser() {
-        return this.getCurrentUser().getUser();
-    }
+  public AppUser getAppUser() {
+    return this.getCurrentUser().getUser();
+  }
 
-    public String getAppUserTimezone() {
-        return this.getCurrentUser().getUserTimeZone();
-    }
+  public String getAppUserTimezone() {
+    return this.getCurrentUser().getUserTimeZone();
+  }
 }

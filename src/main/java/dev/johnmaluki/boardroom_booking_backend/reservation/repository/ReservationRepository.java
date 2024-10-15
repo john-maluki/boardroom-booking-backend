@@ -12,37 +12,44 @@ import java.util.Optional;
 
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
-    List<Reservation> findByStartLocalDateTimeAfter(LocalDateTime currentDateTime);
+  List<Reservation> findByStartLocalDateTimeAfter(LocalDateTime currentDateTime);
 
-    @Query("SELECT e FROM Reservation e WHERE " +
-            ":currentDateTime > e.startLocalDateTime AND " +
-            ":currentDateTime < e.endLocalDateTime")
-    List<Reservation> findLiveMeetings(@Param("currentDateTime") LocalDateTime currentDateTime);
-    List<Reservation> findByArchivedTrueAndDeletedFalse();
-    Optional<Reservation> findByIdAndArchivedFalseAndDeletedFalse(long id);
+  @Query(
+      "SELECT e FROM Reservation e WHERE "
+          + ":currentDateTime > e.startLocalDateTime AND "
+          + ":currentDateTime < e.endLocalDateTime")
+  List<Reservation> findLiveMeetings(@Param("currentDateTime") LocalDateTime currentDateTime);
 
-    @Query("SELECT e.boardroom.id, COUNT(e.id) > 0 " +
-            "FROM Reservation e " +
-            "WHERE :currentDateTime BETWEEN e.startLocalDateTime AND e.endLocalDateTime " +
-            "AND e.archived = false " +
-            "AND e.deleted = false " +
-            "GROUP BY e.boardroom.id")
-    List<Object[]> findBoardroomOngoingMeetingStatus(@Param("currentDateTime") LocalDateTime currentDateTime);
-    List<Reservation> findAllByOrderByStartLocalDateTimeDesc();
+  List<Reservation> findByArchivedTrueAndDeletedFalse();
 
-    @Query("SELECT r FROM Reservation r WHERE r.boardroom.id = :boardroomId " +
-            "AND (r.startLocalDateTime < :endLocalDateTime AND r.endLocalDateTime > :startLocalDateTime)" +
-            "AND r.deleted = false OR r.archived = false"
-    )
-    List<Reservation> findBoardroomConflictingEvents(
-            @Param("boardroomId") Long boardroomId,
-            @Param("startLocalDateTime") LocalDateTime startLocalDateTime,
-            @Param("endLocalDateTime") LocalDateTime endLocalDateTime);
+  Optional<Reservation> findByIdAndArchivedFalseAndDeletedFalse(long id);
 
-    @Query("SELECT r FROM Reservation r WHERE r.startLocalDateTime < :endLocalDateTime " +
-            "AND r.endLocalDateTime > :startLocalDateTime " +
-            "AND r.deleted = false AND r.archived = false")
-    List<Reservation> findConflictingEvents(
-            @Param("startLocalDateTime") LocalDateTime startLocalDateTime,
-            @Param("endLocalDateTime") LocalDateTime endLocalDateTime);
+  @Query(
+      "SELECT e.boardroom.id, COUNT(e.id) > 0 "
+          + "FROM Reservation e "
+          + "WHERE :currentDateTime BETWEEN e.startLocalDateTime AND e.endLocalDateTime "
+          + "AND e.archived = false "
+          + "AND e.deleted = false "
+          + "GROUP BY e.boardroom.id")
+  List<Object[]> findBoardroomOngoingMeetingStatus(
+      @Param("currentDateTime") LocalDateTime currentDateTime);
+
+  List<Reservation> findAllByOrderByStartLocalDateTimeDesc();
+
+  @Query(
+      "SELECT r FROM Reservation r WHERE r.boardroom.id = :boardroomId "
+          + "AND (r.startLocalDateTime < :endLocalDateTime AND r.endLocalDateTime > :startLocalDateTime) "
+          + "AND (r.deleted = false AND r.archived = false)")
+  List<Reservation> findBoardroomConflictingEvents(
+      @Param("boardroomId") Long boardroomId,
+      @Param("startLocalDateTime") LocalDateTime startLocalDateTime,
+      @Param("endLocalDateTime") LocalDateTime endLocalDateTime);
+
+  @Query(
+      "SELECT r FROM Reservation r WHERE r.startLocalDateTime < :endLocalDateTime "
+          + "AND r.endLocalDateTime > :startLocalDateTime "
+          + "AND r.deleted = false AND r.archived = false")
+  List<Reservation> findConflictingEvents(
+      @Param("startLocalDateTime") LocalDateTime startLocalDateTime,
+      @Param("endLocalDateTime") LocalDateTime endLocalDateTime);
 }

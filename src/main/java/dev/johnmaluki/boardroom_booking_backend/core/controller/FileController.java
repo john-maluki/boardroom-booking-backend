@@ -16,30 +16,29 @@ import org.springframework.web.multipart.MultipartFile;
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Files")
 public class FileController {
-    private final FileService fileService;
+  private final FileService fileService;
 
-    @PostMapping("/upload")
-    @Operation(summary = "Upload image files")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
-        return ResponseEntity.ok(fileService.saveFile(file));
+  @PostMapping("/upload")
+  @Operation(summary = "Upload image files")
+  public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+    return ResponseEntity.ok(fileService.saveFile(file));
+  }
+
+  @GetMapping("/files/{fileName}")
+  @Operation(summary = "Obtain file by name")
+  public ResponseEntity<byte[]> getFiles(@PathVariable String fileName) {
+    HttpHeaders headers = new HttpHeaders();
+    String fileExtension = this.getFileExtension(fileName);
+    headers.setContentType(MediaType.parseMediaType("image/" + fileExtension));
+    headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName);
+    return ResponseEntity.ok().headers(headers).body(fileService.getFile(fileName));
+  }
+
+  private String getFileExtension(String fileName) {
+    int lastDotIndex = fileName.lastIndexOf('.');
+    if (lastDotIndex == -1 || lastDotIndex == fileName.length() - 1) {
+      return ""; // No extension found
     }
-
-    @GetMapping("/files/{fileName}")
-    @Operation(summary = "Obtain file by name")
-    public ResponseEntity<byte[]> getFiles(@PathVariable String fileName) {
-            HttpHeaders headers = new HttpHeaders();
-            String fileExtension = this.getFileExtension(fileName);
-            headers.setContentType(MediaType.parseMediaType("image/" + fileExtension));
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName);
-            return ResponseEntity.ok().headers(headers).body(fileService.getFile(fileName));
-    }
-
-    private String getFileExtension(String fileName) {
-        int lastDotIndex = fileName.lastIndexOf('.');
-        if (lastDotIndex == -1 || lastDotIndex == fileName.length() - 1) {
-            return ""; // No extension found
-        }
-        return fileName.substring(lastDotIndex + 1);
-    }
-
+    return fileName.substring(lastDotIndex + 1);
+  }
 }
