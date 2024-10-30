@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 @Profile("dev")
 @Component
 @RequiredArgsConstructor
-public class DumbDataGenerator implements ApplicationRunner {
+public class DumbDataGeneratorRunner implements ApplicationRunner {
   private static final List<RoleType> ROLE_TYPES =
       Arrays.asList(RoleType.USER, RoleType.USER, RoleType.USER, RoleType.USER);
 
@@ -84,8 +84,8 @@ public class DumbDataGenerator implements ApplicationRunner {
     var roles = new ArrayList<Role>();
     for (long i = 1; i <= 4; i++) {
       AppUser user = userRepository.findById(i).orElseThrow();
-      int index = random.nextInt(DumbDataGenerator.ROLE_TYPES.size());
-      RoleType roleType = DumbDataGenerator.ROLE_TYPES.get(index);
+      int index = random.nextInt(DumbDataGeneratorRunner.ROLE_TYPES.size());
+      RoleType roleType = DumbDataGeneratorRunner.ROLE_TYPES.get(index);
       Role role = Role.builder().authority(roleType).user(user).build();
 
       roles.add(role);
@@ -98,8 +98,8 @@ public class DumbDataGenerator implements ApplicationRunner {
   public void createBoardrooms() {
     var boardrooms = new ArrayList<Boardroom>();
     for (long i = 1; i <= 3; i++) {
-      int index = random.nextInt(DumbDataGenerator.IMAGES.size());
-      String image = DumbDataGenerator.IMAGES.get(index);
+      int index = random.nextInt(DumbDataGeneratorRunner.IMAGES.size());
+      String image = DumbDataGeneratorRunner.IMAGES.get(index);
       AppUser user = userRepository.findById(i).orElseThrow();
       BoardroomContact boardroomContact =
           BoardroomContact.builder()
@@ -135,16 +135,16 @@ public class DumbDataGenerator implements ApplicationRunner {
   public void createReservations() {
     var reservations = new ArrayList<Reservation>();
     for (long i = 1; i <= 15; i++) {
-      int boardRoomIndex = random.nextInt(DumbDataGenerator.BOARDROOMS_IDS.size());
-      long boardroomId = DumbDataGenerator.BOARDROOMS_IDS.get(boardRoomIndex);
+      int boardRoomIndex = random.nextInt(DumbDataGeneratorRunner.BOARDROOMS_IDS.size());
+      long boardroomId = DumbDataGeneratorRunner.BOARDROOMS_IDS.get(boardRoomIndex);
       Boardroom boardroom = boardroomRepository.findById(boardroomId).orElseThrow();
-      int userIndex = random.nextInt(DumbDataGenerator.USERS_IDS.size());
-      long userId = DumbDataGenerator.USERS_IDS.get(userIndex);
+      int userIndex = random.nextInt(DumbDataGeneratorRunner.USERS_IDS.size());
+      long userId = DumbDataGeneratorRunner.USERS_IDS.get(userIndex);
       AppUser user = userRepository.findById(userId).orElseThrow();
-      int index = random.nextInt(DumbDataGenerator.MEETING_TYPE.size());
-      MeetingType meetingType = DumbDataGenerator.MEETING_TYPE.get(index);
-      int approvalIndex = random.nextInt(DumbDataGenerator.MEETING_TYPE.size());
-      ApprovalStatus approvalStatus = DumbDataGenerator.APPROVAL_STATUSES.get(approvalIndex);
+      int index = random.nextInt(DumbDataGeneratorRunner.MEETING_TYPE.size());
+      MeetingType meetingType = DumbDataGeneratorRunner.MEETING_TYPE.get(index);
+      int approvalIndex = random.nextInt(DumbDataGeneratorRunner.MEETING_TYPE.size());
+      ApprovalStatus approvalStatus = DumbDataGeneratorRunner.APPROVAL_STATUSES.get(approvalIndex);
       // Generate a random date in the future
       LocalDateTime startDate =
           faker
@@ -191,10 +191,10 @@ public class DumbDataGenerator implements ApplicationRunner {
   public void createBoardroomEquipment() {
     var equipments = new ArrayList<Equipment>();
     for (long i = 1; i <= 7; i++) {
-      int boardRoomIndex = random.nextInt(DumbDataGenerator.BOARDROOMS_IDS.size());
-      long boardroomId = DumbDataGenerator.BOARDROOMS_IDS.get(boardRoomIndex);
-      int imageIndex = random.nextInt(DumbDataGenerator.EQUIPMENT_IMAGES.size());
-      String equipmentImage = DumbDataGenerator.EQUIPMENT_IMAGES.get(imageIndex);
+      int boardRoomIndex = random.nextInt(DumbDataGeneratorRunner.BOARDROOMS_IDS.size());
+      long boardroomId = DumbDataGeneratorRunner.BOARDROOMS_IDS.get(boardRoomIndex);
+      int imageIndex = random.nextInt(DumbDataGeneratorRunner.EQUIPMENT_IMAGES.size());
+      String equipmentImage = DumbDataGeneratorRunner.EQUIPMENT_IMAGES.get(imageIndex);
       Boardroom boardroom = boardroomRepository.findById(boardroomId).orElseThrow();
       Equipment equipment =
           Equipment.builder()

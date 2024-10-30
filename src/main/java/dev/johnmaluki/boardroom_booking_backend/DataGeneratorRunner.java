@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class DataGenerator implements ApplicationRunner {
+public class DataGeneratorRunner implements ApplicationRunner {
     private final AppAdminRepository appAdminRepository;
     private final UserUtil userUtil;
 
