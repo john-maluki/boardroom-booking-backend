@@ -319,6 +319,10 @@ public class ReservationServiceImpl implements ReservationService {
       result.add(item.trim());
     }
     String creator = reservation.getUser().getEmail();
+    String boardroomEmail = reservation.getBoardroom().getEmail();
+    if (boardroomEmail != null && !boardroomEmail.isEmpty()) {
+      result.add(boardroomEmail);
+    }
     result.add(creator);
     return new HashSet<>(result);
   }
