@@ -242,10 +242,20 @@ public class ReservationServiceImpl implements ReservationService {
   private void sendMailForApproval(Boardroom boardroom, Reservation reservation) {
     String to = boardroom.getAdministrator().getEmail();
     String subject = EmailUtil.SUBJECT_RESERVATION_CONFIRMATION;
+    LocalDateTime startDate =
+        dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(
+            reservation.getStartLocalDateTime(), currentUserService.getAppUserTimezone());
+    LocalDateTime endDate =
+        dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(
+            reservation.getEndLocalDateTime(), currentUserService.getAppUserTimezone());
     Map<String, Object> templateModel = new HashMap<>();
     templateModel.put("boardroomName", boardroom.getName());
     templateModel.put("meetingTitle", reservation.getMeetingTitle());
     templateModel.put("meetingDescription", reservation.getMeetingDescription());
+    templateModel.put("startDate", startDate.toLocalDate());
+    templateModel.put("endDate", endDate.toLocalDate());
+    templateModel.put("startTime", startDate.toLocalTime());
+    templateModel.put("endTime", endDate.toLocalTime());
     emailService.sendEmailForReservationApproval(to, subject, templateModel);
   }
 

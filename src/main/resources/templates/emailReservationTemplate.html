@@ -62,6 +62,20 @@
             font-style: italic;
         }
 
+        .date-time-section {
+           margin: 20px 0;
+           display: flex;
+           justify-content: center;
+        }
+
+        .start-date-time {
+            width: 50%;
+        }
+
+        .end-date-time {
+            width: 50%;
+        }
+
         .summary-section {
         margin-bottom: 20px
         }
@@ -90,6 +104,19 @@
             <div class="summary-section">
                 <h4>SUMMARY</h4>
                 <p th:text="${meetingDescription}"></p>
+            </div>
+
+            <div class="date-time-section">
+                <div class="start-date-time">
+                    <h3>Start Date</h3>
+                    <p th:text="${startDate}"></p>
+                    <p th:text="${startTime}"></p>
+                </div>
+                <div class="end-date-time">
+                    <h3>End Date</h3>
+                    <p th:text="${endDate}"></p>
+                    <p th:text="${endTime}"></p>
+                </div>
             </div>
 
             <p>Thank you</p>
