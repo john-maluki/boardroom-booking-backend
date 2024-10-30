@@ -33,6 +33,7 @@ public class ReservationMapper {
         .meetingDescription(reservation.getMeetingDescription())
         .meetingType(reservation.getMeetingType())
         .approvalStatus(reservation.getApprovalStatus())
+        .cancellationMessage(reservation.getCancellationMessage())
         .attendees(reservation.getAttendees())
         .ictSupportRequired(reservation.isIctSupportRequired())
         .isUrgentMeeting(reservation.isUrgentMeeting())

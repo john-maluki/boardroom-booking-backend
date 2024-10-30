@@ -100,7 +100,7 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
     List<Reservation> reservations =
         new ArrayList<>(
-            this.filterReservationByUser(boardroom).stream()
+            boardroom.getReservations().stream()
                 .filter(reservation -> !reservation.getArchived() && !reservation.getDeleted())
                 .toList());
     reservations.sort(Comparator.comparing(Reservation::getCreatedAt).reversed());
@@ -241,16 +241,16 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
   }
 
   @Override
+  public boolean checkAnyReservationOverlap(long boardroomId,
+      ReservationEventDateDto reservationEventDateDto) {
+   return this.checkAnyEventOverlap(boardroomId, reservationEventDateDto);
+  }
+
+  @Override
   public ReservationOverlapResponseDto checkBoardroomReservationOverlap(
       long boardroomId, ReservationEventDateDto reservationEventDateDto) {
-    LocalDateTime startLocalDateTime =
-        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
-    LocalDateTime endLocalDateTime =
-        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
-    List<Reservation> conflictingEvents =
-        reservationRepository.findBoardroomConflictingEvents(
-            boardroomId, startLocalDateTime, endLocalDateTime);
-    return reservationMapper.toReservationOverlapResponseDto(!conflictingEvents.isEmpty());
+    boolean eventOverlap = this.checkAnyEventOverlap(boardroomId, reservationEventDateDto);
+    return reservationMapper.toReservationOverlapResponseDto(eventOverlap);
   }
 
   @Override
@@ -342,5 +342,16 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
     return lockedRoomRepository
         .getByBoardroomAndLockedTrueAndArchivedFalseAndDeletedFalse(boardroom)
         .orElseThrow(() -> new ResourceNotFoundException("Locked room not found"));
+  }
+
+  private boolean checkAnyEventOverlap(long boardroomId, ReservationEventDateDto reservationEventDateDto) {
+    LocalDateTime startLocalDateTime =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
+    LocalDateTime endLocalDateTime =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
+    List<Reservation> conflictingEvents =
+        reservationRepository.findBoardroomConflictingEvents(
+            boardroomId, startLocalDateTime, endLocalDateTime);
+    return !conflictingEvents.isEmpty();
   }
 }

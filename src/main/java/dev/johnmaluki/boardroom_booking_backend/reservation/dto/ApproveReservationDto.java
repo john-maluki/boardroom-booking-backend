@@ -5,5 +5,6 @@ import jakarta.validation.constraints.NotNull;
 
 public record ApproveReservationDto(
         @NotNull(message = "The field is required")
-        ApprovalStatus approvalStatus
+        ApprovalStatus approvalStatus,
+        String cancellationMessage
 ) {}

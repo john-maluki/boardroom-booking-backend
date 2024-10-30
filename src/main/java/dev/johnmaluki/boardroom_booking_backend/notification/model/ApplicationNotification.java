@@ -25,20 +25,20 @@ import lombok.experimental.SuperBuilder;
 @Table(name = "notifications")
 public class ApplicationNotification extends BaseEntity {
   @Column(name = "title", nullable = false)
-  String title;
+  private String title;
 
   @Column(name = "message", nullable = false, length = 500)
-  String message;
+  private String message;
 
   @Column(name = "recipient", nullable = false) // csv column of ids
-  String recipient;
+  private String recipient;
 
   @Default
   @Column(name = "is_read", nullable = false)
-  boolean isRead = false;
+  private boolean isRead = false;
 
   @ToString.Exclude
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "reservation_id")
-  Reservation reservation;
+  private Reservation reservation;
 }

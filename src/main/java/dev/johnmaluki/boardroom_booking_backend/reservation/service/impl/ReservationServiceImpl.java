@@ -2,6 +2,7 @@ package dev.johnmaluki.boardroom_booking_backend.reservation.service.impl;
 
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServiceUtil;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.ReservationOverlapException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceOwnershipException;
 import dev.johnmaluki.boardroom_booking_backend.core.model.BaseEntity;
@@ -97,6 +98,17 @@ public class ReservationServiceImpl implements ReservationService {
   @Override
   public ReservationResponseDto createReservation(ReservationDto reservationDto) {
     Boardroom boardroom = boardroomServiceUtil.findBoardroomById(reservationDto.boardroomId());
+    ReservationEventDateDto reservationEventDateDto =
+        ReservationEventDateDto.builder()
+            .startDateTime(reservationDto.startDateTime())
+            .endDateTime(reservationDto.endDateTime())
+            .build();
+    boolean hasOverlappingEvent =
+        boardroomServiceUtil.checkAnyReservationOverlap(boardroom.getId(), reservationEventDateDto);
+    if (hasOverlappingEvent) {
+      throw new ReservationOverlapException(
+          "Event overlaps with an existing one. Please choose another time.");
+    }
     AppUser user = currentUserService.getAppUser();
     Reservation reservation = reservationMapper.toReservation(reservationDto);
     reservation.setBoardroom(boardroom);
@@ -105,7 +117,7 @@ public class ReservationServiceImpl implements ReservationService {
     // After successful saving do sent email to boardroom admin for approval
     if (savedReservation.getId() != null) {
       this.sendReservationPendingNotification(boardroom, savedReservation);
-            this.sendMailForApproval(boardroom, savedReservation);
+      this.sendMailForApproval(boardroom, savedReservation);
     }
     return reservationMapper.toReservationResponseDto(savedReservation);
   }
@@ -116,6 +128,11 @@ public class ReservationServiceImpl implements ReservationService {
     Reservation reservation = this.findReservationByIdFromDb(reservationId);
     ApprovalStatus approvalStatus = approveReservationDto.approvalStatus();
     reservation.setApprovalStatus(approvalStatus);
+    if (approvalStatus == ApprovalStatus.DECLINED) {
+      reservation.setCancellationMessage(approveReservationDto.cancellationMessage());
+    } else {
+      reservation.setCancellationMessage(null);
+    }
     Reservation savedReservation = reservationRepository.save(reservation);
     if (savedReservation.getApprovalStatus() == ApprovalStatus.APPROVED) {
       this.sendReservationApprovalNotification(savedReservation);
@@ -147,6 +164,7 @@ public class ReservationServiceImpl implements ReservationService {
     Boardroom boardroom = boardroomServiceUtil.findBoardroomById(changeVenueDto.boardroomId());
     reservation.setBoardroom(boardroom);
     reservation.setApprovalStatus(ApprovalStatus.PENDING);
+    reservation.setCancellationMessage(null);
     Reservation savedReservation = reservationRepository.save(reservation);
     if (Objects.equals(savedReservation.getBoardroom().getId(), boardroom.getId())) {
       if (savedReservation.getApprovalStatus() == ApprovalStatus.PENDING) {
@@ -295,7 +313,8 @@ public class ReservationServiceImpl implements ReservationService {
     return new HashSet<>(result);
   }
 
-  private void sendReservationPendingNotification(Boardroom boardroom, Reservation savedReservation) {
+  private void sendReservationPendingNotification(
+      Boardroom boardroom, Reservation savedReservation) {
     List<Long> recipients = List.of(boardroom.getAdministrator().getId());
     ApplicationNotification applicationNotification =
         ApplicationNotification.builder()

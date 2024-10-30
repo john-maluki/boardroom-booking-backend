@@ -34,6 +34,9 @@ public class Reservation extends BaseEntity {
   @Column(name = "approval_status")
   private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
+  @Column(name = "cancellation_message", length = 300)
+  private String cancellationMessage;
+
   @Column(name = "meeting_title", nullable = false, length = 1000)
   private String meetingTitle;
 
@@ -72,6 +75,7 @@ public class Reservation extends BaseEntity {
   @JoinColumn(name = "user_id")
   private AppUser user;
 
+  @ToString.Exclude
   @Builder.Default
   @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "reservation")
   private List<ApplicationNotification> appNotifications = new ArrayList<>();

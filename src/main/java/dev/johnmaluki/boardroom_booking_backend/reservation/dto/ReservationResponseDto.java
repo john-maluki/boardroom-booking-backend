@@ -20,6 +20,7 @@ public record ReservationResponseDto(
         String reservedBy,
         String ownerEmail,
         ApprovalStatus approvalStatus,
+        String cancellationMessage,
         boolean ictSupportRequired,
         boolean isUrgentMeeting,
         boolean recordMeeting,
