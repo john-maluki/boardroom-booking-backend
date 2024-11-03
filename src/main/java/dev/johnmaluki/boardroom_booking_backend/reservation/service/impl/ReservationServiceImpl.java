@@ -103,12 +103,7 @@ public class ReservationServiceImpl implements ReservationService {
             .startDateTime(reservationDto.startDateTime())
             .endDateTime(reservationDto.endDateTime())
             .build();
-    boolean hasOverlappingEvent =
-        boardroomServiceUtil.checkAnyReservationOverlap(boardroom.getId(), reservationEventDateDto);
-    if (hasOverlappingEvent) {
-      throw new ReservationOverlapException(
-          "Event overlaps with an existing one. Please choose another time.");
-    }
+    this.checkEventOverlap(null, boardroom.getId(), reservationEventDateDto);
     AppUser user = currentUserService.getAppUser();
     Reservation reservation = reservationMapper.toReservation(reservationDto);
     reservation.setBoardroom(boardroom);
@@ -162,6 +157,7 @@ public class ReservationServiceImpl implements ReservationService {
       long reservationId, ChangeVenueDto changeVenueDto) {
     Reservation reservation = this.findReservationByIdFromDb(reservationId);
     Boardroom boardroom = boardroomServiceUtil.findBoardroomById(changeVenueDto.boardroomId());
+    boardroomServiceUtil.checkAnyReservationOverlap(reservation);
     reservation.setBoardroom(boardroom);
     reservation.setApprovalStatus(ApprovalStatus.PENDING);
     reservation.setCancellationMessage(null);
@@ -185,6 +181,8 @@ public class ReservationServiceImpl implements ReservationService {
     LocalDateTime endLocalDateTime =
         dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
     Reservation reservation = this.findReservationByIdFromDb(reservationId);
+    this.checkEventOverlap(
+        reservationId, reservation.getBoardroom().getId(), reservationEventDateDto);
     reservation.setStartLocalDateTime(startLocalDateTime);
     reservation.setEndLocalDateTime(endLocalDateTime);
     Reservation savedReservation = reservationRepository.save(reservation);
@@ -363,5 +361,17 @@ public class ReservationServiceImpl implements ReservationService {
         notificationMapper.toNotificationResponseDto(applicationNotification);
     notificationUtil.sendNotificationToUser(reservationUser, notificationResponseDto);
     notificationUtil.sendNotificationToAdmins(notificationResponseDto);
+  }
+
+  private void checkEventOverlap(
+      Long reservationId, Long boardroomId, ReservationEventDateDto reservationEventDateDto) {
+
+    boolean hasOverlap =
+        boardroomServiceUtil.checkAnyReservationOverlap(
+            reservationId, boardroomId, reservationEventDateDto);
+    if (hasOverlap) {
+      throw new ReservationOverlapException(
+          "Event overlaps with an existing one. Please choose another time.");
+    }
   }
 }

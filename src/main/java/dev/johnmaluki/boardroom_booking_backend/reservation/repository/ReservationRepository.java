@@ -37,7 +37,17 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
   List<Reservation> findAllByOrderByStartLocalDateTimeDesc();
 
   @Query(
-      "SELECT r FROM Reservation r WHERE r.boardroom.id = :boardroomId "
+      "SELECT r FROM Reservation r WHERE  r.id <> :reservationId "
+          + "AND r.boardroom.id = :boardroomId "
+          + "AND (r.startLocalDateTime < :endLocalDateTime AND r.endLocalDateTime > :startLocalDateTime) "
+          + "AND (r.deleted = false AND r.archived = false)")
+  List<Reservation> findBoardroomConflictingEvents(
+      @Param("reservationId") Long reservationId,
+      @Param("boardroomId") Long boardroomId,
+      @Param("startLocalDateTime") LocalDateTime startLocalDateTime,
+      @Param("endLocalDateTime") LocalDateTime endLocalDateTime);
+  @Query(
+      "SELECT r FROM Reservation r WHERE   r.boardroom.id = :boardroomId "
           + "AND (r.startLocalDateTime < :endLocalDateTime AND r.endLocalDateTime > :startLocalDateTime) "
           + "AND (r.deleted = false AND r.archived = false)")
   List<Reservation> findBoardroomConflictingEvents(
