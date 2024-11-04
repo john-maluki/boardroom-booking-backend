@@ -59,6 +59,15 @@ public class ReservationController {
         );
     }
 
+    @PatchMapping("/reservations/{reservationId}")
+    @Operation(summary = "update reservation")
+    public ResponseEntity<ReservationResponseDto> updateReservation(
+        @PathVariable("reservationId") long reservationId,
+        @RequestBody @Valid ReservationDto reservationDto
+    ){
+        return ResponseEntity.ok(reservationService.updateReservation(reservationId, reservationDto));
+    }
+
     @PatchMapping("/reservations/{reservationId}/approve")
     @Operation(summary = "Approve reservation")
     public ResponseEntity<ReservationResponseDto> approveReservation(

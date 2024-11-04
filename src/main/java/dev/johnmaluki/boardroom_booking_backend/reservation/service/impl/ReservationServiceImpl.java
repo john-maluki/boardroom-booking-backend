@@ -5,6 +5,7 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServi
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ReservationOverlapException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceOwnershipException;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceUpdateExeption;
 import dev.johnmaluki.boardroom_booking_backend.core.model.BaseEntity;
 import dev.johnmaluki.boardroom_booking_backend.core.service.CurrentUserService;
 import dev.johnmaluki.boardroom_booking_backend.core.util.DataFilterUtil;
@@ -19,6 +20,7 @@ import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMa
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
 import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationRepository;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationService;
+import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationUtilService;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserServiceUtil;
 import dev.johnmaluki.boardroom_booking_backend.util.ApprovalStatus;
@@ -51,6 +53,7 @@ public class ReservationServiceImpl implements ReservationService {
   private final ApplicationNotificationRepository applicationNotificationRepository;
   private final NotificationMapper notificationMapper;
   private final UserUtil userUtil;
+  private final ReservationUtilService reservationUpdationService;
 
   @Override
   public List<ReservationResponseDto> getAllReservations() {
@@ -132,7 +135,7 @@ public class ReservationServiceImpl implements ReservationService {
     Reservation savedReservation = reservationRepository.save(reservation);
     if (savedReservation.getApprovalStatus() == ApprovalStatus.APPROVED) {
       this.sendReservationApprovalNotification(savedReservation);
-      if(reservation.getMeetingType() != MeetingType.PHYSICAL) {
+      if (reservation.getMeetingType() != MeetingType.PHYSICAL) {
         this.sendEmailToAdminsForMeetLinkCreation(reservation);
       }
     }
@@ -204,6 +207,30 @@ public class ReservationServiceImpl implements ReservationService {
     } else {
       reservation.setDeleted(true);
       reservationRepository.save(reservation);
+    }
+  }
+
+  @Override
+  public ReservationResponseDto updateReservation(
+      long reservationId, ReservationDto reservationDto) {
+    Reservation currentReservation = this.findReservationByIdFromDb(reservationId);
+    Reservation newReservation = reservationMapper.toReservation(reservationDto);
+    boolean anyMeetingUpdate =
+        reservationUpdationService.checkAnyReservationUpdate(newReservation, currentReservation);
+    Set<String> newAttendees =
+        reservationUpdationService.getNewAttendees(newReservation, currentReservation);
+
+    if (anyMeetingUpdate || !newAttendees.isEmpty()) {
+      currentReservation.setMeetingTitle(newReservation.getMeetingTitle());
+      currentReservation.setMeetingDescription(newReservation.getMeetingTitle());
+      currentReservation.setMeetingType(newReservation.getMeetingType());
+      currentReservation.setAttendees(newReservation.getAttendees());
+      currentReservation.setIctSupportRequired(newReservation.isIctSupportRequired());
+      currentReservation.setRecordMeeting(newReservation.isRecordMeeting());
+      currentReservation.setUrgentMeeting(newReservation.isUrgentMeeting());
+      return reservationMapper.toReservationResponseDto(reservationRepository.save(currentReservation));
+    } else {
+      throw new ResourceUpdateExeption("No changes detected!");
     }
   }
 

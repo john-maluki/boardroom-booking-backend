@@ -2,6 +2,7 @@ package dev.johnmaluki.boardroom_booking_backend.reservation.service;
 
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 public interface ReservationService {
@@ -27,4 +28,5 @@ public interface ReservationService {
     ReservationResponseDto changeReservationVenue(long reservationId, ChangeVenueDto changeVenueDto);
     ReservationResponseDto rescheduleReservation(long reservationId, ReservationEventDateDto reservationEventDateDto);
     void removeReservation(long reservationId);
+    ReservationResponseDto updateReservation(long reservationId, @Valid ReservationDto reservationDto);
 }
