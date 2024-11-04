@@ -24,6 +24,7 @@ import dev.johnmaluki.boardroom_booking_backend.user.service.UserServiceUtil;
 import dev.johnmaluki.boardroom_booking_backend.util.ApprovalStatus;
 import dev.johnmaluki.boardroom_booking_backend.util.DateTimeUtil;
 import dev.johnmaluki.boardroom_booking_backend.util.EmailUtil;
+import dev.johnmaluki.boardroom_booking_backend.util.MeetingType;
 import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
 import dev.johnmaluki.boardroom_booking_backend.util.UserUtil;
 import lombok.RequiredArgsConstructor;
@@ -131,7 +132,9 @@ public class ReservationServiceImpl implements ReservationService {
     Reservation savedReservation = reservationRepository.save(reservation);
     if (savedReservation.getApprovalStatus() == ApprovalStatus.APPROVED) {
       this.sendReservationApprovalNotification(savedReservation);
-      this.sendEmailToAdminsForMeetLinkCreation(reservation);
+      if(reservation.getMeetingType() != MeetingType.PHYSICAL) {
+        this.sendEmailToAdminsForMeetLinkCreation(reservation);
+      }
     }
     return reservationMapper.toReservationResponseDto(savedReservation);
   }
@@ -143,7 +146,7 @@ public class ReservationServiceImpl implements ReservationService {
     boolean wasNUll = reservation.getMeetingLink() == null;
     reservation.setMeetingLink(reservationMeetingLinkDto.meetingLink());
     Reservation savedReservation = reservationRepository.save(reservation);
-    if (wasNUll) {
+    if (wasNUll && reservation.getMeetingType() != MeetingType.PHYSICAL) {
       this.sendEmailToAttendeesPlusMeetingCreator(savedReservation);
     } else {
       String subject = EmailUtil.SUBJECT_RESERVATION_MEETING_LINK_UPDATE;
