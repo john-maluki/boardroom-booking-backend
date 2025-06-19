@@ -11,7 +11,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
     registry
         .addMapping("/**")
         .allowedOrigins(
-            "http://localhost:3000", "https://10.0.2.72", "http://10.0.2.72") // Frontend origin
+            "http://localhost:3000",
+            "https://localhost:3000",
+            "http://boardroom.kemri.go.ke:7102",
+            "https://boardroom.kemri.go.ke:7102/",
+            "https://10.0.2.72",
+            "http://10.0.2.72") // Frontend origin
         .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         .allowedHeaders("*");
   }
