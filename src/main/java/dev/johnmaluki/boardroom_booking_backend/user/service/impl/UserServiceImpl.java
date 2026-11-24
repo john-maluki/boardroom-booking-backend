@@ -1,18 +1,32 @@
 package dev.johnmaluki.boardroom_booking_backend.user.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import dev.johnmaluki.boardroom_booking_backend.core.cache.CacheKeys;
+import dev.johnmaluki.boardroom_booking_backend.core.cache.CacheTtl;
+import dev.johnmaluki.boardroom_booking_backend.core.cache.ReactiveCacheService;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.UniqueContraintException;
-import dev.johnmaluki.boardroom_booking_backend.user.dto.*;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.KemriEmployeeResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.SystemAdministratorDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.SystemAdministratorResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneDto;
+import dev.johnmaluki.boardroom_booking_backend.user.dto.UserTimezoneResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
-import dev.johnmaluki.boardroom_booking_backend.user.model.AppAdmin;
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppAdminRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
+import dev.johnmaluki.boardroom_booking_backend.user.repository.UserQueryRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserService;
 import dev.johnmaluki.boardroom_booking_backend.user.service.UserServiceUtil;
 import io.github.cdimascio.dotenv.Dotenv;
+import java.io.IOException;
+import java.time.ZoneId;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.HttpGet;
@@ -20,113 +34,156 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.time.ZoneId;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService, UserServiceUtil {
-    private final AppUserRepository userRepository;
-    private final AppAdminRepository appAdminRepository;
-    private final UserMapper userMapper;
-    private final CredentialsProvider credentialsProvider;
-    private final Dotenv dotenv;
+  private final AppUserRepository userRepository;
+  private final UserQueryRepository userQueryRepository;
+  private final AppAdminRepository appAdminRepository;
+  private final UserMapper userMapper;
+  private final CredentialsProvider credentialsProvider;
+  private final Dotenv dotenv;
+  private final ObjectMapper objectMapper;
+  private final ReactiveCacheService cacheService;
 
-    @Override
-    public List<UserResponseDto> getAllUsers() {
-        return userMapper.toUserResponseDtoList(
-                userRepository.findAll()
-        );
-    }
+  @Override
+  public Flux<UserResponseDto> getAllUsers() {
+    return cacheService.cacheList(
+        CacheKeys.USER_ALL,
+        CacheTtl.REFERENCE_DATA,
+        UserResponseDto.class,
+        userQueryRepository.findAllActive().map(userMapper::toUserResponseDto));
+  }
 
-    @Override
-    public UserResponseDto getUserId(long userId) {
-        return userMapper.toUserResponseDto(
-                this.getUserFromDb(userId)
-        );
-    }
+  @Override
+  public Mono<UserResponseDto> getUserId(long userId) {
+    return cacheService.cache(
+        CacheKeys.userById(userId),
+        CacheTtl.REFERENCE_DATA,
+        UserResponseDto.class,
+        userQueryRepository
+            .findActiveById(userId)
+            .switchIfEmpty(Mono.error(new ResourceNotFoundException("User not found")))
+            .map(userMapper::toUserResponseDto));
+  }
 
-    @Override
-    public List<UserTimezoneResponseDto> getUserTimezones() {
-        List<String> zoneIds = ZoneId.getAvailableZoneIds().stream().sorted().toList();
-        return userMapper.toUserTimezoneResponseDtoList(zoneIds);
-    }
+  /**
+   * The available zone ids come from the JDK, so this is cached with a long expiry purely to avoid
+   * rebuilding and re-serialising a 600-entry list on every call.
+   */
+  @Override
+  public Flux<UserTimezoneResponseDto> getUserTimezones() {
+    return cacheService.cacheList(
+        CacheKeys.USER_TIMEZONES,
+        CacheTtl.STATIC_DATA,
+        UserTimezoneResponseDto.class,
+        Flux.fromIterable(ZoneId.getAvailableZoneIds().stream().sorted().toList())
+            .map(userMapper::toUserTimezoneResponseDto));
+  }
 
-    @Override
-    public UserResponseDto changeUserTimezone(long userId, UserTimezoneDto userTimezoneDto) {
-        AppUser user = this.getUserFromDb(userId);
-        user.setTimeZone(userTimezoneDto.userTimezone());
-        return userMapper.toUserResponseDto(userRepository.save(user));
-    }
+  @Override
+  @Transactional
+  public Mono<UserResponseDto> changeUserTimezone(long userId, UserTimezoneDto userTimezoneDto) {
+    return userRepository
+        .findByIdAndArchivedFalseAndDeletedFalse(userId)
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException("User not found")))
+        .flatMap(
+            user -> {
+              user.setTimeZone(userTimezoneDto.userTimezone());
+              return userRepository.save(user);
+            })
+        .then(cacheService.evictByPattern(CacheKeys.USER_NAMESPACE))
+        // Re-read through the role join so the response carries the user's authority.
+        .then(userQueryRepository.findActiveById(userId))
+        .map(userMapper::toUserResponseDto);
+  }
 
-    @Override
-    public List<KemriEmployeeResponseDto> getKemriEmployees() {
-        List<Map<String, Object>> employees = this.makeNTLMRequestToGetKemriEmployees();
-        return userMapper.toKemriEmployeeResponseDtoList(employees);
-    }
+  @Override
+  public Flux<SystemAdministratorResponseDto> getSystemAdministrators() {
+    return cacheService.cacheList(
+        CacheKeys.USER_SYSTEM_ADMINS,
+        CacheTtl.REFERENCE_DATA,
+        SystemAdministratorResponseDto.class,
+        appAdminRepository
+            .findAllByArchivedFalseAndDeletedFalse()
+            .map(userMapper::toSystemAdministratorResponseDto));
+  }
 
-    @Override
-    public List<SystemAdministratorResponseDto> getSystemAdministrators() {
-        List<AppAdmin> appAdmins = appAdminRepository.findAllByArchivedFalseAndDeletedFalse();
-        return userMapper.toSystemAdministratorResponseDtoList(appAdmins);
-    }
+  @Override
+  @Transactional
+  public Mono<Void> removeSystemAdmin(long adminId) {
+    return appAdminRepository
+        .findById(adminId)
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException("Admin not found")))
+        .flatMap(appAdminRepository::delete)
+        .then(cacheService.evictByPattern(CacheKeys.USER_NAMESPACE));
+  }
 
-    @Override
-    public void removeSystemAdmin(long adminId) {
-        AppAdmin appAdmin = this.findAdminById(adminId);
-        appAdminRepository.delete(appAdmin);
-    }
+  @Override
+  @Transactional
+  public Mono<SystemAdministratorResponseDto> createSystemAdministrator(
+      SystemAdministratorDto systemAdministratorDto) {
+    return appAdminRepository
+        .existsByEmail(systemAdministratorDto.email())
+        .defaultIfEmpty(false)
+        .flatMap(
+            exists ->
+                Boolean.TRUE.equals(exists)
+                    ? Mono.<SystemAdministratorResponseDto>error(
+                        new UniqueContraintException("Admin with that email exists"))
+                    : appAdminRepository
+                        .save(userMapper.toAppAdmin(systemAdministratorDto))
+                        .map(userMapper::toSystemAdministratorResponseDto))
+        .flatMap(
+            dto -> cacheService.evictByPattern(CacheKeys.USER_NAMESPACE).thenReturn(dto));
+  }
 
-    @Override
-    public SystemAdministratorResponseDto createSystemAdministrator(SystemAdministratorDto systemAdministratorDto) {
-        boolean alreadyFound = appAdminRepository.existsByEmail(systemAdministratorDto.email());
-        if(alreadyFound) {
-            throw new UniqueContraintException("Admin with that email exists");
-        }
-        var appAdmin = userMapper.toAppAdmin(systemAdministratorDto);
-        return userMapper.toSystemAdministratorResponseDto(appAdminRepository.save(appAdmin));
-    }
+  @Override
+  public Flux<AppUser> getAllSystemAdministrators() {
+    return userRepository.findApplicationAdministrators();
+  }
 
-    private AppUser getUserFromDb(long userId){
-        return userRepository.findByIdAndArchivedFalseAndDeletedFalse(userId).orElseThrow(
-                () -> new ResourceNotFoundException("User not found")
-        );
-    }
+  @Override
+  public Mono<String> findEmailByUserId(long userId) {
+    return userRepository
+        .findByIdAndArchivedFalseAndDeletedFalse(userId)
+        .mapNotNull(AppUser::getEmail);
+  }
 
-    @Override
-    public List<AppUser> getAllSystemAdministrators() {
-        return userRepository.findApplicationAdministrators();
-    }
+  /**
+   * Navision employee directory.
+   *
+   * <p>This call is NTLM-authenticated, which neither {@code WebClient} nor Reactor Netty supports,
+   * so Apache HttpClient stays. It is blocking, so it runs on {@code boundedElastic} rather than on
+   * an event loop. Failures yield an empty list, as before.
+   */
+  @Override
+  public Flux<KemriEmployeeResponseDto> getKemriEmployees() {
+    return Mono.fromCallable(this::makeNtlmRequestToGetKemriEmployees)
+        .subscribeOn(Schedulers.boundedElastic())
+        .flatMapMany(Flux::fromIterable)
+        .map(userMapper::toKemriEmployeeResponseDto);
+  }
 
-    private List<Map<String, Object>> makeNTLMRequestToGetKemriEmployees() {
-        String targetUrl = dotenv.get("DEV_NAV_TARGET_URL");
-        // Create HttpClient with credentials
-        try (CloseableHttpClient httpClient = HttpClients.custom()
-                .setDefaultCredentialsProvider(credentialsProvider)
-                .build()) {
-            // Create the GET request
-            HttpGet httpGet = new HttpGet(targetUrl);
-            // Execute the request
-            HttpResponse response = httpClient.execute(httpGet);
-            // Get the response content
-            String jsonResponse = EntityUtils.toString(response.getEntity());
-            // Convert JSON response to Map
-            ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, Object> result = objectMapper.readValue(jsonResponse, Map.class);
-            return (List<Map<String, Object>>) result.get("value");
-        } catch (IOException e) {
-            System.out.printf(e.getMessage());
-        }
-        return Collections.emptyList();
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> makeNtlmRequestToGetKemriEmployees() {
+    String targetUrl = dotenv.get("DEV_NAV_TARGET_URL");
+    try (CloseableHttpClient httpClient =
+        HttpClients.custom().setDefaultCredentialsProvider(credentialsProvider).build()) {
+      HttpResponse response = httpClient.execute(new HttpGet(targetUrl));
+      String jsonResponse = EntityUtils.toString(response.getEntity());
+      Map<String, Object> result = objectMapper.readValue(jsonResponse, Map.class);
+      Object value = result.get("value");
+      return value == null ? Collections.emptyList() : (List<Map<String, Object>>) value;
+    } catch (IOException e) {
+      log.error("Could not fetch KEMRI employees from Navision: {}", e.getMessage());
+      return Collections.emptyList();
     }
-
-    private AppAdmin findAdminById(long adminId) {
-        return appAdminRepository.findById(adminId).orElseThrow(
-                () -> new ResourceNotFoundException("Admin not found")
-        );
-    }
+  }
 }

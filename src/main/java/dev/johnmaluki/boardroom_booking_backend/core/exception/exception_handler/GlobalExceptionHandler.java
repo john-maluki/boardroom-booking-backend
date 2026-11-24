@@ -12,44 +12,37 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-  @ExceptionHandler(value = {FileUploadException.class})
+
+  @ExceptionHandler(FileUploadException.class)
   public ResponseEntity<Object> fileUploadExceptionHandler(FileUploadException exception) {
-    ResourceErrorMessage errorMessage =
-        ResourceErrorMessage.builder()
-            .message(exception.getMessage())
-            .httpStatus(HttpStatus.BAD_REQUEST)
-            .throwable(exception.getCause())
-            .build();
-    return new ResponseEntity<>(errorMessage, HttpStatus.BAD_REQUEST);
+    return errorResponse(exception.getMessage(), exception.getCause(), HttpStatus.BAD_REQUEST);
   }
 
-  @ExceptionHandler(value = {UniqueContraintException.class})
+  @ExceptionHandler(UniqueContraintException.class)
   public ResponseEntity<Object> dataIntegrityViolationException(
       UniqueContraintException exception) {
-    ResourceErrorMessage errorMessage =
-        ResourceErrorMessage.builder()
-            .message(exception.getMessage())
-            .httpStatus(HttpStatus.CONFLICT)
-            .build();
-    return new ResponseEntity<>(errorMessage, HttpStatus.CONFLICT);
+    return errorResponse(exception.getMessage(), null, HttpStatus.CONFLICT);
   }
 
-  @ExceptionHandler(value = {ReservationOverlapException.class})
-  public ResponseEntity<Object> reservationOverlapException(ReservationOverlapException exception) {
-    ResourceErrorMessage errorMessage =
-        ResourceErrorMessage.builder()
-            .message(exception.getMessage())
-            .httpStatus(HttpStatus.CONFLICT)
-            .build();
-    return new ResponseEntity<>(errorMessage, HttpStatus.CONFLICT);
+  @ExceptionHandler(ReservationOverlapException.class)
+  public ResponseEntity<Object> reservationOverlapException(
+      ReservationOverlapException exception) {
+    return errorResponse(exception.getMessage(), null, HttpStatus.CONFLICT);
   }
-  @ExceptionHandler(value = {ResourceUpdateExeption.class})
+
+  @ExceptionHandler(ResourceUpdateExeption.class)
   public ResponseEntity<Object> resourceUpdateException(ResourceUpdateExeption exception) {
+    return errorResponse(exception.getMessage(), null, HttpStatus.CONFLICT);
+  }
+
+  private ResponseEntity<Object> errorResponse(
+      String message, Throwable cause, HttpStatus status) {
     ResourceErrorMessage errorMessage =
         ResourceErrorMessage.builder()
-            .message(exception.getMessage())
-            .httpStatus(HttpStatus.CONFLICT)
+            .message(message)
+            .httpStatus(status)
+            .throwable(cause)
             .build();
-    return new ResponseEntity<>(errorMessage, HttpStatus.CONFLICT);
+    return new ResponseEntity<>(errorMessage, status);
   }
 }

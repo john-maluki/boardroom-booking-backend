@@ -1,75 +1,74 @@
 package dev.johnmaluki.boardroom_booking_backend.core.exception.exception_handler;
 
-import dev.johnmaluki.boardroom_booking_backend.core.exception.*;
-import io.jsonwebtoken.ExpiredJwtException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import dev.johnmaluki.boardroom_booking_backend.core.exception.DuplicateResourceException;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.JwtTokenException;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceErrorMessage;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceOwnershipException;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.support.WebExchangeBindException;
 
 @RestControllerAdvice
 public class ResourceExceptionHandler {
-    @ExceptionHandler(value = {ResourceNotFoundException.class})
-    public ResponseEntity<Object> resourceNotFoundExceptionHandler(
-            ResourceNotFoundException exception
-    ) {
-        ResourceErrorMessage errorMessage = ResourceErrorMessage.builder()
-                .message(exception.getMessage())
-                .httpStatus(HttpStatus.NOT_FOUND)
-                .throwable(exception.getCause())
-                .build();
-        return new ResponseEntity<>(errorMessage, HttpStatus.NOT_FOUND);
-    }
 
-    @ExceptionHandler(value = {ResourceOwnershipException.class})
-    public ResponseEntity<Object> resourceAccessExceptionHandler(
-            ResourceOwnershipException exception
-    ) {
-        ResourceErrorMessage errorMessage = ResourceErrorMessage.builder()
-                .message(exception.getMessage())
-                .httpStatus(HttpStatus.FORBIDDEN)
-                .throwable(exception.getCause())
-                .build();
-        return new ResponseEntity<>(errorMessage, HttpStatus.FORBIDDEN);
-    }
+  @ExceptionHandler(ResourceNotFoundException.class)
+  public ResponseEntity<Object> resourceNotFoundExceptionHandler(
+      ResourceNotFoundException exception) {
+    return errorResponse(exception.getMessage(), exception.getCause(), HttpStatus.NOT_FOUND);
+  }
 
-    @ExceptionHandler(JwtTokenException.class)
-    public ResponseEntity<Object> jwtTokenExceptionHandler(
-            JwtTokenException exception
-    ) {
-        ResourceErrorMessage errorMessage = ResourceErrorMessage.builder()
-                .message(exception.getMessage())
-                .httpStatus(HttpStatus.FORBIDDEN)
-                .throwable(exception.getCause())
-                .build();
-        return new ResponseEntity<>(errorMessage, HttpStatus.FORBIDDEN);
-    }
+  @ExceptionHandler(ResourceOwnershipException.class)
+  public ResponseEntity<Object> resourceAccessExceptionHandler(
+      ResourceOwnershipException exception) {
+    return errorResponse(exception.getMessage(), exception.getCause(), HttpStatus.FORBIDDEN);
+  }
 
-    @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<Object> duplicateResourceExceptionHandler(
-            DuplicateResourceException exception
-    ) {
-        ResourceErrorMessage errorMessage = ResourceErrorMessage.builder()
-                .message(exception.getMessage())
-                .httpStatus(HttpStatus.BAD_REQUEST)
-                .throwable(exception.getCause())
-                .build();
-        return new ResponseEntity<>(errorMessage, HttpStatus.BAD_REQUEST);
-    }
+  @ExceptionHandler(JwtTokenException.class)
+  public ResponseEntity<Object> jwtTokenExceptionHandler(JwtTokenException exception) {
+    return errorResponse(exception.getMessage(), exception.getCause(), HttpStatus.FORBIDDEN);
+  }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> invalidArgumentExceptionHandler(
-            MethodArgumentNotValidException exception
-    ) {
-        Map<String, String> errorMessage = new HashMap<>();
-        exception.getBindingResult().getFieldErrors().forEach(
-                error -> errorMessage.put(error.getField(), error.getDefaultMessage())
-        );
-        return new ResponseEntity<>(errorMessage, HttpStatus.BAD_REQUEST);
-    }
+  @ExceptionHandler(DuplicateResourceException.class)
+  public ResponseEntity<Object> duplicateResourceExceptionHandler(
+      DuplicateResourceException exception) {
+    return errorResponse(exception.getMessage(), exception.getCause(), HttpStatus.BAD_REQUEST);
+  }
+
+  /** Failed login or an unusable refresh token. */
+  @ExceptionHandler(BadCredentialsException.class)
+  public ResponseEntity<Object> badCredentialsExceptionHandler(BadCredentialsException exception) {
+    return errorResponse(exception.getMessage(), null, HttpStatus.UNAUTHORIZED);
+  }
+
+  /**
+   * WebFlux raises {@link WebExchangeBindException} where Spring MVC raised {@code
+   * MethodArgumentNotValidException}; the field-to-message response body is unchanged.
+   */
+  @ExceptionHandler(WebExchangeBindException.class)
+  public ResponseEntity<Map<String, String>> invalidArgumentExceptionHandler(
+      WebExchangeBindException exception) {
+    Map<String, String> errorMessage = new HashMap<>();
+    exception
+        .getBindingResult()
+        .getFieldErrors()
+        .forEach(error -> errorMessage.put(error.getField(), error.getDefaultMessage()));
+    return new ResponseEntity<>(errorMessage, HttpStatus.BAD_REQUEST);
+  }
+
+  private ResponseEntity<Object> errorResponse(
+      String message, Throwable cause, HttpStatus status) {
+    ResourceErrorMessage errorMessage =
+        ResourceErrorMessage.builder()
+            .message(message)
+            .httpStatus(status)
+            .throwable(cause)
+            .build();
+    return new ResponseEntity<>(errorMessage, status);
+  }
 }

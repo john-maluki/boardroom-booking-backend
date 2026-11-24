@@ -1,21 +1,23 @@
 package dev.johnmaluki.boardroom_booking_backend.user.repository;
 
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.r2dbc.repository.Query;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.Optional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Repository
-public interface AppUserRepository extends JpaRepository<AppUser, Long> {
-    Optional<AppUser> findByUsername(String username);
-    Optional<AppUser> findByIdAndArchivedFalseAndDeletedFalse(long userId);
+public interface AppUserRepository extends ReactiveCrudRepository<AppUser, Long> {
+  Mono<AppUser> findByUsername(String username);
 
-    @Query(
-            value = "SELECT u FROM AppUser u JOIN u.role r WHERE r.authority = 'ADMIN' " +
-                    "AND u.deleted = false AND u.archived = false"
-    )
-    List<AppUser> findApplicationAdministrators();
+  Mono<AppUser> findByIdAndArchivedFalseAndDeletedFalse(long userId);
+
+  @Query(
+      """
+      SELECT u.* FROM users u
+      JOIN roles r ON r.user_id = u.id
+      WHERE r.authority = 'ADMIN' AND u.deleted = false AND u.archived = false
+      """)
+  Flux<AppUser> findApplicationAdministrators();
 }

@@ -17,9 +17,20 @@ public final class UserUtil {
   private final Environment env;
   private final Dotenv dotenv;
 
+  /**
+   * Returns an empty list when the variable is unset, so a deployment that does not seed default
+   * administrators starts normally instead of failing in the startup runner.
+   */
   public List<String> getDefaultSystemAdministrators() {
     String defaultSystemAdminEmails = this.dotenv.get("DEFAULT_SYSTEM_ADMIN_EMAILS");
-    return Arrays.asList(defaultSystemAdminEmails.split(","));
+    if (defaultSystemAdminEmails == null || defaultSystemAdminEmails.isBlank()) {
+      log.warn("DEFAULT_SYSTEM_ADMIN_EMAILS is not set; no default administrators will be seeded");
+      return List.of();
+    }
+    return Arrays.stream(defaultSystemAdminEmails.split(","))
+        .map(String::trim)
+        .filter(email -> !email.isEmpty())
+        .toList();
   }
 
   public String getDefaultUserTimeZone() {

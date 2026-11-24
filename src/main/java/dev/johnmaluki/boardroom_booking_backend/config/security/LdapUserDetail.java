@@ -1,13 +1,7 @@
 package dev.johnmaluki.boardroom_booking_backend.config.security;
 
-import lombok.*;
+import lombok.Builder;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+/** What a successful directory authentication tells us about the user. */
 @Builder
-public class LdapUserDetail {
-    private String username;
-    private String name;
-    private String email;
-}
+public record LdapUserDetail(String username, String name, String email) {}

@@ -1,27 +1,25 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.model;
 
 import dev.johnmaluki.boardroom_booking_backend.core.model.BaseEntity;
-import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
-@Entity
-@Table(name="locked_boardrooms")
+@Table("locked_boardrooms")
 public class LockedRoom extends BaseEntity {
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "boardroom_id")
-    private Boardroom boardroom;
+  @Column("boardroom_id")
+  private Long boardroomId;
 
-    @Builder.Default
-    @Column(name = "locked")
-    private boolean locked = true;
+  @Builder.Default
+  @Column("locked")
+  private boolean locked = true;
 
-    @Column(name = "given_reason")
-    private String givenReason;
-
+  @Column("given_reason")
+  private String givenReason;
 }

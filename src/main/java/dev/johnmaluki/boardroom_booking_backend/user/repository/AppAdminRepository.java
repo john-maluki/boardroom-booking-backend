@@ -1,12 +1,17 @@
 package dev.johnmaluki.boardroom_booking_backend.user.repository;
 
 import dev.johnmaluki.boardroom_booking_backend.user.model.AppAdmin;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-public interface AppAdminRepository extends JpaRepository<AppAdmin, Long> {
-    boolean existsByEmail(String email);
-    List<AppAdmin> findAllByArchivedFalseAndDeletedFalse();
-    List<AppAdmin> findAllByEmailIn(List<String> emails);
+@Repository
+public interface AppAdminRepository extends ReactiveCrudRepository<AppAdmin, Long> {
+  Mono<Boolean> existsByEmail(String email);
+
+  Flux<AppAdmin> findAllByArchivedFalseAndDeletedFalse();
+
+  Flux<AppAdmin> findAllByEmailIn(List<String> emails);
 }

@@ -5,26 +5,19 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactRe
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.BoardroomContact;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
 @Component
 public class BoardroomContactMapper {
-    public BoardroomContactResponseDto toBoardroomContactResponseDto(BoardroomContact boardroomContact) {
-        return BoardroomContactResponseDto.builder()
-                .id(boardroomContact.getId())
-                .contact(boardroomContact.getContact())
-                .boardroomId(boardroomContact.getBoardroom().getId())
-                .tag(boardroomContact.getTag())
-                .build();
-    }
 
-    public List<BoardroomContactResponseDto> toBoardroomContactResponseDtoList(List<BoardroomContact> boardroomContacts) {
-        return boardroomContacts.stream().map(this::toBoardroomContactResponseDto).toList();
-    }
+  public BoardroomContactResponseDto toBoardroomContactResponseDto(BoardroomContact contact) {
+    return BoardroomContactResponseDto.builder()
+        .id(contact.getId())
+        .contact(contact.getContact())
+        .boardroomId(contact.getBoardroomId())
+        .tag(contact.getTag())
+        .build();
+  }
 
-    public BoardroomContact toBoardroomContact(BoardroomContactDto boardroomContactDto) {
-        return BoardroomContact.builder()
-                .contact(boardroomContactDto.contact())
-                .build();
-    }
+  public BoardroomContact toBoardroomContact(BoardroomContactDto boardroomContactDto) {
+    return BoardroomContact.builder().contact(boardroomContactDto.contact()).build();
+  }
 }

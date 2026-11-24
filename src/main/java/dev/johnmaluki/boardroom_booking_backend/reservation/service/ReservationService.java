@@ -1,32 +1,51 @@
 package dev.johnmaluki.boardroom_booking_backend.reservation.service;
 
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.*;
-
-import jakarta.validation.Valid;
-import java.util.List;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ApproveReservationDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ChangeVenueDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationEventDateDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationMeetingLinkDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public interface ReservationService {
-    List<ReservationResponseDto> getAllReservations();
-    /** Retrieves a list of meeting reservations that are meant to take
-     * place in the future
-     *
-     * @return List<ReservationResponseDto>
-     */
-    List<ReservationResponseDto> getUpcomingReservations();
+  Flux<ReservationResponseDto> getAllReservations();
 
-    /** Retrieves a list of live meetings where the current date and time fall between
-     * the start and end dates and times of each meeting.
-     *
-     * @return List of live meetings
-     */
-    List<ReservationResponseDto> getAllLiveMeetings();
-    List<ReservationResponseDto> getArchivedReservations();
-    ReservationResponseDto getReservationById(long reservationId);
-    ReservationResponseDto createReservation(ReservationDto reservationDto);
-    ReservationResponseDto approveReservation(long reservationId, ApproveReservationDto approveReservationDto);
-    ReservationResponseDto updateReservationWithMeetingLink(long reservationId, ReservationMeetingLinkDto reservationMeetingLinkDto);
-    ReservationResponseDto changeReservationVenue(long reservationId, ChangeVenueDto changeVenueDto);
-    ReservationResponseDto rescheduleReservation(long reservationId, ReservationEventDateDto reservationEventDateDto);
-    void removeReservation(long reservationId);
-    ReservationResponseDto updateReservation(long reservationId, @Valid ReservationDto reservationDto);
+  /**
+   * Meeting reservations scheduled to take place in the future.
+   *
+   * @return upcoming reservations
+   */
+  Flux<ReservationResponseDto> getUpcomingReservations();
+
+  /**
+   * Live meetings, where the current date and time fall between a meeting's start and end.
+   *
+   * @return meetings currently in progress
+   */
+  Flux<ReservationResponseDto> getAllLiveMeetings();
+
+  Flux<ReservationResponseDto> getArchivedReservations();
+
+  Mono<ReservationResponseDto> getReservationById(long reservationId);
+
+  Mono<ReservationResponseDto> createReservation(ReservationDto reservationDto);
+
+  Mono<ReservationResponseDto> approveReservation(
+      long reservationId, ApproveReservationDto approveReservationDto);
+
+  Mono<ReservationResponseDto> updateReservationWithMeetingLink(
+      long reservationId, ReservationMeetingLinkDto reservationMeetingLinkDto);
+
+  Mono<ReservationResponseDto> changeReservationVenue(
+      long reservationId, ChangeVenueDto changeVenueDto);
+
+  Mono<ReservationResponseDto> rescheduleReservation(
+      long reservationId, ReservationEventDateDto reservationEventDateDto);
+
+  Mono<Void> removeReservation(long reservationId);
+
+  Mono<ReservationResponseDto> updateReservation(
+      long reservationId, ReservationDto reservationDto);
 }

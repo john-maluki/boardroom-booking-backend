@@ -2,29 +2,25 @@ package dev.johnmaluki.boardroom_booking_backend.boardroom.model;
 
 import dev.johnmaluki.boardroom_booking_backend.core.model.BaseEntity;
 import dev.johnmaluki.boardroom_booking_backend.util.CommunicationLineType;
-import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true)
-@Entity
-@Table(name="boardroom_contact")
+@Table("boardroom_contact")
 public class BoardroomContact extends BaseEntity {
+  @Column("boardroom_id")
+  private Long boardroomId;
 
-    @ToString.Exclude
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "boardroom_id")
-    private Boardroom boardroom;
+  @Builder.Default
+  @Column("communication_method")
+  private CommunicationLineType communicationMethod = CommunicationLineType.PHONE_EXTENSION;
 
-    @Builder.Default
-    @Enumerated(EnumType.STRING)
-    @Column(name = "communication_method")
-    private CommunicationLineType communicationMethod = CommunicationLineType.PHONE_EXTENSION;
-
-    @Column(name = "contact")
-    private String contact;
+  @Column("contact")
+  private String contact;
 }

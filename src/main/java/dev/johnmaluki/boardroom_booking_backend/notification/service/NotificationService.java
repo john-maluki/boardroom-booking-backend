@@ -1,10 +1,18 @@
 package dev.johnmaluki.boardroom_booking_backend.notification.service;
 
 import dev.johnmaluki.boardroom_booking_backend.notification.dto.NotificationResponseDto;
-import java.util.List;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public interface NotificationService {
-  List<NotificationResponseDto> getAppNotifications();
+  Flux<NotificationResponseDto> getAppNotifications();
 
-  NotificationResponseDto markNotificationAsRead(Long notificationId);
+  Mono<NotificationResponseDto> markNotificationAsRead(Long notificationId);
+
+  /**
+   * The live notification feed for the acting user, for the Server-Sent Events endpoint to relay.
+   *
+   * @return notifications addressed to this user as they are raised
+   */
+  Flux<NotificationResponseDto> streamNotificationsForCurrentUser();
 }

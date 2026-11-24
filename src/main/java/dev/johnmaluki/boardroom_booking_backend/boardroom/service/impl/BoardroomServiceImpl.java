@@ -1,6 +1,13 @@
 package dev.johnmaluki.boardroom_booking_backend.boardroom.service.impl;
 
-import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.*;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomAdminDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomContactResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomEventFilterResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.BoardroomResponseDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockMessageDto;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.dto.LockedBoardroomResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomContactMapper;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.mapper.BoardroomMapper;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
@@ -11,366 +18,457 @@ import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.BoardroomRe
 import dev.johnmaluki.boardroom_booking_backend.boardroom.repository.LockedRoomRepository;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomService;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServiceUtil;
+import dev.johnmaluki.boardroom_booking_backend.boardroom.view.BoardroomMeetingStatus;
+import dev.johnmaluki.boardroom_booking_backend.core.cache.CacheKeys;
+import dev.johnmaluki.boardroom_booking_backend.core.cache.CacheTtl;
+import dev.johnmaluki.boardroom_booking_backend.core.cache.ReactiveCacheService;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.DuplicateResourceException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ReservationOverlapException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.service.CurrentUserService;
-import dev.johnmaluki.boardroom_booking_backend.core.service.FileService;
 import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.equipment.mapper.EquipmentMapper;
+import dev.johnmaluki.boardroom_booking_backend.equipment.repository.EquipmentRepository;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationEventDateDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationOverlapResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
+import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationQueryRepository;
 import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationRepository;
 import dev.johnmaluki.boardroom_booking_backend.user.dto.UserResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.user.mapper.UserMapper;
-import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
 import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepository;
+import dev.johnmaluki.boardroom_booking_backend.user.repository.UserQueryRepository;
 import dev.johnmaluki.boardroom_booking_backend.util.DateTimeUtil;
-import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
-import jakarta.transaction.Transactional;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-
+/**
+ * Boardrooms, their contacts, their equipment and their locks.
+ *
+ * <p>Caching note: boardroom rows are cached, but the assembled {@code BoardroomResponseDto} is
+ * not. The DTO carries {@code hasOngoingMeeting}, which is true only for the length of a meeting,
+ * so caching the assembled response would serve a stale "in use" badge for the whole TTL. Instead
+ * the rows come from Redis and the ongoing-meeting flag is recomputed per request by one grouped
+ * query — the cheap part stays fresh and the repeated part stays cached.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceUtil {
   public static final String RESOURCE_NOT_FOUND = "Resource not found";
+  private static final String OVERLAP_MESSAGE =
+      "Event overlaps with an existing one. Please choose another time.";
+
   private final CurrentUserService currentUserService;
   private final BoardroomRepository boardroomRepository;
   private final ReservationRepository reservationRepository;
+  private final ReservationQueryRepository reservationQueryRepository;
   private final AppUserRepository userRepository;
+  private final UserQueryRepository userQueryRepository;
   private final LockedRoomRepository lockedRoomRepository;
   private final BoardroomContactRepository boardroomContactRepository;
+  private final EquipmentRepository equipmentRepository;
   private final BoardroomMapper boardroomMapper;
   private final EquipmentMapper equipmentMapper;
   private final UserMapper userMapper;
   private final BoardroomContactMapper boardroomContactMapper;
   private final ReservationMapper reservationMapper;
   private final DateTimeUtil dateTimeUtil;
-  private final FileService fileService;
+  private final ReactiveCacheService cacheService;
 
   @Override
-  public List<BoardroomResponseDto> getAllBoardrooms() {
-    Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
-    List<Boardroom> boardrooms = boardroomRepository.findByArchivedFalseAndDeletedFalse();
-    for (Boardroom boardroom : boardrooms) {
-      boardroom.setHasOngoingMeeting(
-          boardroomOnGoingMeetingStatuses.getOrDefault(boardroom.getId(), false));
-    }
-    return boardroomMapper.toBoardroomResponseDtoList(boardrooms);
+  public Flux<BoardroomResponseDto> getAllBoardrooms() {
+    return Mono.zip(cachedActiveBoardrooms().collectList(), ongoingMeetingStatuses())
+        .flatMapMany(tuple -> withOngoingStatus(tuple.getT1(), tuple.getT2()));
   }
 
   @Override
-  public List<BoardroomResponseDto> getLockedBoardrooms() {
-    List<Boardroom> lockedBoardrooms =
-        boardroomRepository.findAllByLockedTrueAndDeletedFalseAndArchivedFalse();
-    return boardroomMapper.toBoardroomResponseDtoList(lockedBoardrooms);
+  public Flux<BoardroomResponseDto> getLockedBoardrooms() {
+    return cacheService
+        .cacheList(
+            CacheKeys.BOARDROOM_LOCKED,
+            CacheTtl.REFERENCE_DATA,
+            Boardroom.class,
+            boardroomRepository.findAllByLockedTrueAndDeletedFalseAndArchivedFalse())
+        .map(boardroomMapper::toBoardroomResponseDto);
   }
 
   @Override
-  public BoardroomResponseDto getBoardroomById(long boardroomId) {
-    Map<Long, Boolean> boardroomOnGoingMeetingStatuses = this.getOngoingMeetingStatuses();
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    boardroom.setBoardroomContacts(
-        boardroom.getBoardroomContacts().stream()
-            .filter(contact -> !contact.getArchived() && !contact.getDeleted())
-            .toList());
-    boardroom.setHasOngoingMeeting(
-        boardroomOnGoingMeetingStatuses.getOrDefault(boardroom.getId(), false));
-    return boardroomMapper.toBoardroomResponseDto(boardroom);
+  public Mono<BoardroomResponseDto> getBoardroomById(long boardroomId) {
+    return Mono.zip(
+            cachedBoardroom(boardroomId),
+            cachedContacts(boardroomId).collectList(),
+            ongoingMeetingStatuses())
+        .map(
+            tuple -> {
+              Boardroom boardroom = tuple.getT1();
+              boardroom.setHasOngoingMeeting(
+                  tuple.getT3().getOrDefault(boardroom.getId(), false));
+              return boardroomMapper.toBoardroomResponseDto(boardroom, tuple.getT2());
+            });
   }
 
   @Override
-  public LockedBoardroomResponseDto getLockedBoardroomReasonById(long boardroomId) {
-    LockedRoom lockedRoom = this.getLockedRoomByBoardroomId(boardroomId);
-    return boardroomMapper.toLockedBoardroomResponseDto(lockedRoom);
+  public Mono<LockedBoardroomResponseDto> getLockedBoardroomReasonById(long boardroomId) {
+    return getLockedRoomByBoardroomId(boardroomId).map(boardroomMapper::toLockedBoardroomResponseDto);
   }
 
   @Override
-  public List<ReservationResponseDto> getBoardroomReservations(long boardroomId) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    List<Reservation> reservations =
-        new ArrayList<>(
-            boardroom.getReservations().stream()
-                .filter(reservation -> !reservation.getArchived() && !reservation.getDeleted())
-                .toList());
-    reservations.sort(Comparator.comparing(Reservation::getCreatedAt).reversed());
-    return reservationMapper.toReservationResponseDtoList(reservations);
+  public Flux<ReservationResponseDto> getBoardroomReservations(long boardroomId) {
+    return findBoardroomById(boardroomId)
+        .then(readContext())
+        .flatMapMany(
+            context ->
+                reservationQueryRepository
+                    .findActiveByBoardroom(boardroomId, context.getT1().orElse(null))
+                    .map(view -> reservationMapper.toReservationResponseDto(view, context.getT2())));
   }
 
   @Override
-  public List<EquipmentResponseDto> getBoardroomEquipments(long boardroomId) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    if (boardroom.getEquipments().isEmpty()) {
-      return Collections.emptyList();
-    }
-    return equipmentMapper.toEquipmentResponseDtoList(boardroom.getEquipments());
+  public Flux<ReservationResponseDto> getBoardroomArchivedReservations(long boardroomId) {
+    return findBoardroomById(boardroomId)
+        .then(readContext())
+        .flatMapMany(
+            context ->
+                reservationQueryRepository
+                    .findArchivedByBoardroom(boardroomId, context.getT1().orElse(null))
+                    .map(view -> reservationMapper.toReservationResponseDto(view, context.getT2())));
   }
 
   @Override
-  public List<ReservationResponseDto> getBoardroomArchivedReservations(long boardroomId) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    return reservationMapper.toReservationResponseDtoList(
-        this.filterReservationByUser(boardroom).stream()
-            .filter(reservation -> reservation.getArchived() && !reservation.getDeleted())
-            .toList());
+  public Flux<EquipmentResponseDto> getBoardroomEquipments(long boardroomId) {
+    return findBoardroomById(boardroomId)
+        .thenMany(
+            cacheService.cacheList(
+                CacheKeys.boardroomEquipment(boardroomId),
+                CacheTtl.REFERENCE_DATA,
+                EquipmentResponseDto.class,
+                equipmentRepository
+                    .findByBoardroomIdAndArchivedFalseAndDeletedFalse(boardroomId)
+                    .map(equipmentMapper::toEquipmentResponseDto)));
   }
 
   @Override
-  public UserResponseDto getBoardroomAdministrator(long boardroomId) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    AppUser user =
-        Optional.ofNullable(boardroom.getAdministrator())
-            .orElseThrow(
-                () -> new ResourceNotFoundException("Boardroom contains no administrator"));
-    return userMapper.toUserResponseDto(user);
+  public Mono<UserResponseDto> getBoardroomAdministrator(long boardroomId) {
+    return findBoardroomById(boardroomId)
+        .flatMap(
+            boardroom ->
+                boardroom.getAdministratorId() == null
+                    ? Mono.<UserResponseDto>error(
+                        new ResourceNotFoundException("Boardroom contains no administrator"))
+                    : userQueryRepository
+                        .findActiveById(boardroom.getAdministratorId())
+                        .switchIfEmpty(
+                            Mono.error(
+                                new ResourceNotFoundException(
+                                    "Boardroom contains no administrator")))
+                        .map(userMapper::toUserResponseDto));
   }
 
   @Override
-  public List<BoardroomContactResponseDto> getBoardroomContacts(long boardroomId) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    return boardroomContactMapper.toBoardroomContactResponseDtoList(
-        boardroom.getBoardroomContacts().stream()
-            .filter(
-                boardroomContact ->
-                    !boardroomContact.getArchived() && !boardroomContact.getDeleted())
-            .toList());
-  }
-
-  @Override
-  public BoardroomResponseDto createBoardroom(BoardroomDto boardroomDto) {
-    try {
-      Boardroom boardroom = boardroomMapper.toBoardroom(boardroomDto);
-      return boardroomMapper.toBoardroomResponseDto(boardroomRepository.save(boardroom));
-    } catch (DataIntegrityViolationException e) {
-      throw new DuplicateResourceException("Resource already exists.");
-    }
+  public Flux<BoardroomContactResponseDto> getBoardroomContacts(long boardroomId) {
+    return findBoardroomById(boardroomId).thenMany(cachedContacts(boardroomId));
   }
 
   @Override
   @Transactional
-  public UserResponseDto createBoardroomAdministrator(
+  public Mono<BoardroomResponseDto> createBoardroom(BoardroomDto boardroomDto) {
+    return boardroomRepository
+        .save(boardroomMapper.toBoardroom(boardroomDto))
+        .onErrorMap(
+            DataIntegrityViolationException.class,
+            e -> new DuplicateResourceException("Resource already exists."))
+        .map(boardroomMapper::toBoardroomResponseDto)
+        .flatMap(dto -> evictBoardroomCaches().thenReturn(dto));
+  }
+
+  @Override
+  @Transactional
+  public Mono<UserResponseDto> createBoardroomAdministrator(
       long boardroomId, BoardroomAdminDto boardroomAdminDto) {
-    try {
-      Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-      AppUser user = this.getAppUserByIdFromDb(boardroomAdminDto.userId());
-      user.addBoardroom(boardroom);
-      return userMapper.toUserResponseDto(boardroomRepository.save(boardroom).getAdministrator());
-    } catch (DataIntegrityViolationException e) {
-      throw new DuplicateResourceException("Resource already exists.");
-    }
+    return Mono.zip(findBoardroomById(boardroomId), findUserById(boardroomAdminDto.userId()))
+        .flatMap(
+            tuple -> {
+              Boardroom boardroom = tuple.getT1();
+              boardroom.setAdministratorId(tuple.getT2().getId());
+              return boardroomRepository.save(boardroom);
+            })
+        .onErrorMap(
+            DataIntegrityViolationException.class,
+            e -> new DuplicateResourceException("Resource already exists."))
+        .flatMap(saved -> userQueryRepository.findActiveById(saved.getAdministratorId()))
+        .map(userMapper::toUserResponseDto)
+        .flatMap(dto -> evictBoardroomCaches().thenReturn(dto));
   }
 
   @Override
-  public BoardroomContactResponseDto createBoardroomContact(
+  @Transactional
+  public Mono<BoardroomContactResponseDto> createBoardroomContact(
       long boardroomId, BoardroomContactDto boardroomContactDto) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    BoardroomContact boardroomContact =
-        boardroomContactMapper.toBoardroomContact(boardroomContactDto);
-    boardroom.addBoardroomContact(boardroomContact);
-    boardroomContact = boardroomContactRepository.save(boardroomContact);
-    return boardroomContactMapper.toBoardroomContactResponseDto(boardroomContact);
+    return findBoardroomById(boardroomId)
+        .flatMap(
+            boardroom -> {
+              BoardroomContact contact =
+                  boardroomContactMapper.toBoardroomContact(boardroomContactDto);
+              contact.setBoardroomId(boardroom.getId());
+              return boardroomContactRepository.save(contact);
+            })
+        .map(boardroomContactMapper::toBoardroomContactResponseDto)
+        .flatMap(dto -> evictBoardroomCaches().thenReturn(dto));
   }
 
   @Override
-  public void removeBoardroomById(long boardroomId) {
-    this.deleteBoardroomSoftly(boardroomId);
+  @Transactional
+  public Mono<Void> removeBoardroomById(long boardroomId) {
+    return findBoardroomById(boardroomId)
+        .flatMap(
+            boardroom -> {
+              boardroom.setDeleted(true);
+              return boardroomRepository.save(boardroom);
+            })
+        .then(evictBoardroomCaches());
   }
 
   @Override
-  public void removeBoardroomContact(long boardroomId, long contactId) {
-    this.deleteBoardroomContactSoftly(boardroomId, contactId);
+  @Transactional
+  public Mono<Void> removeBoardroomContact(long boardroomId, long contactId) {
+    return boardroomContactRepository
+        .findByIdAndBoardroomIdAndArchivedFalseAndDeletedFalse(contactId, boardroomId)
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException("Contact not found")))
+        .flatMap(
+            contact -> {
+              contact.setDeleted(true);
+              return boardroomContactRepository.save(contact);
+            })
+        .then(evictBoardroomCaches());
   }
 
   @Override
-  public LockedBoardroomResponseDto lockBoardroomById(
-      long boardroomId, LockMessageDto lockMessageDto) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    LockedRoom lockedRoom =
-        LockedRoom.builder().locked(true).givenReason(lockMessageDto.givenReason()).build();
-    boardroom.setLocked(true);
-    LockedRoom savedLockedRoom =
-        lockedRoomRepository
-            .getByBoardroomAndLockedTrueAndArchivedFalseAndDeletedFalse(boardroom)
-            .orElse(lockedRoom);
-    savedLockedRoom.setGivenReason(lockMessageDto.givenReason());
-    boardroom.addLockedBoardroom(savedLockedRoom);
-    return boardroomMapper.toLockedBoardroomResponseDto(lockedRoomRepository.save(savedLockedRoom));
-  }
-
-  @Override
-  public void unLockBoardroomById(long boardroomId) {
-    LockedRoom lockedRoom = this.getLockedRoomByBoardroomId(boardroomId);
-    lockedRoom.setLocked(false);
-    lockedRoom.getBoardroom().setLocked(false);
-    lockedRoomRepository.save(lockedRoom);
-  }
-
-  @Override
-  public BoardroomContactResponseDto updateBoardroomContact(
+  @Transactional
+  public Mono<BoardroomContactResponseDto> updateBoardroomContact(
       long boardroomId, long contactId, BoardroomContactDto boardroomContactDto) {
-    BoardroomContact boardroomContact =
-        boardroomContactRepository.getContactRecord(contactId, boardroomId);
-    boardroomContact.setContact(boardroomContactDto.contact());
-    return boardroomContactMapper.toBoardroomContactResponseDto(
-        boardroomContactRepository.save(boardroomContact));
+    return boardroomContactRepository
+        .findByIdAndBoardroomIdAndArchivedFalseAndDeletedFalse(contactId, boardroomId)
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException("Contact not found")))
+        .flatMap(
+            contact -> {
+              contact.setContact(boardroomContactDto.contact());
+              return boardroomContactRepository.save(contact);
+            })
+        .map(boardroomContactMapper::toBoardroomContactResponseDto)
+        .flatMap(dto -> evictBoardroomCaches().thenReturn(dto));
   }
 
   @Override
-  public BoardroomResponseDto updateBoardroomById(long boardroomId, BoardroomDto boardroomDto) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    boardroom.setName(boardroomDto.name());
-    boardroom.setCentre(boardroomDto.centre());
-    boardroom.setDepartment(boardroomDto.department());
-    boardroom.setCapacity(boardroomDto.capacity());
-    boardroom.setDescription(boardroomDto.description());
-    boardroom.setInternetEnabled(boardroomDto.internetEnabled());
-    boardroom.setEmail(boardroomDto.email());
-    boardroom.setMeetingTypeSupported(boardroomDto.meetingTypeSupported());
-    boardroom.setPicture(boardroomDto.picture());
-    return boardroomMapper.toBoardroomResponseDto(boardroomRepository.save(boardroom));
+  @Transactional
+  public Mono<BoardroomResponseDto> updateBoardroomById(
+      long boardroomId, BoardroomDto boardroomDto) {
+    return findBoardroomById(boardroomId)
+        .flatMap(
+            boardroom -> {
+              boardroom.setName(boardroomDto.name());
+              boardroom.setCentre(boardroomDto.centre());
+              boardroom.setDepartment(boardroomDto.department());
+              boardroom.setCapacity(boardroomDto.capacity());
+              boardroom.setDescription(boardroomDto.description());
+              boardroom.setInternetEnabled(boardroomDto.internetEnabled());
+              boardroom.setEmail(boardroomDto.email());
+              boardroom.setMeetingTypeSupported(boardroomDto.meetingTypeSupported());
+              boardroom.setPicture(boardroomDto.picture());
+              return boardroomRepository.save(boardroom);
+            })
+        .map(boardroomMapper::toBoardroomResponseDto)
+        .flatMap(dto -> evictBoardroomCaches().thenReturn(dto));
   }
 
   @Override
-  public boolean checkAnyReservationOverlap(
-      Long reservationId, Long boardroomId, ReservationEventDateDto reservationEventDateDto) {
-    return this.checkAnyEventOverlap(reservationId, boardroomId, reservationEventDateDto);
+  @Transactional
+  public Mono<LockedBoardroomResponseDto> lockBoardroomById(
+      long boardroomId, LockMessageDto lockMessageDto) {
+    return findBoardroomById(boardroomId)
+        .flatMap(
+            boardroom -> {
+              boardroom.setLocked(true);
+              return boardroomRepository.save(boardroom);
+            })
+        .flatMap(
+            boardroom ->
+                lockedRoomRepository
+                    .findByBoardroomIdAndLockedTrueAndArchivedFalseAndDeletedFalse(
+                        boardroom.getId())
+                    .defaultIfEmpty(
+                        LockedRoom.builder().boardroomId(boardroom.getId()).locked(true).build()))
+        .flatMap(
+            lockedRoom -> {
+              lockedRoom.setGivenReason(lockMessageDto.givenReason());
+              return lockedRoomRepository.save(lockedRoom);
+            })
+        .map(boardroomMapper::toLockedBoardroomResponseDto)
+        .flatMap(dto -> evictBoardroomCaches().thenReturn(dto));
   }
 
   @Override
-  public void checkAnyReservationOverlap(Reservation reservation) {
-    List<Reservation> conflictingEvents =
-        reservationRepository.findBoardroomConflictingEvents(
-            reservation.getId(),
-            reservation.getBoardroom().getId(),
-            reservation.getStartLocalDateTime(),
-            reservation.getEndLocalDateTime());
-    if (!conflictingEvents.isEmpty()) {
-      throw new ReservationOverlapException(
-          "Event overlaps with an existing one. Please choose another time.");
-    }
+  @Transactional
+  public Mono<Void> unLockBoardroomById(long boardroomId) {
+    return getLockedRoomByBoardroomId(boardroomId)
+        .flatMap(
+            lockedRoom -> {
+              lockedRoom.setLocked(false);
+              return lockedRoomRepository.save(lockedRoom);
+            })
+        .flatMap(lockedRoom -> findBoardroomById(lockedRoom.getBoardroomId()))
+        .flatMap(
+            boardroom -> {
+              boardroom.setLocked(false);
+              return boardroomRepository.save(boardroom);
+            })
+        .then(evictBoardroomCaches());
   }
 
   @Override
-  public ReservationOverlapResponseDto checkBoardroomReservationOverlap(
+  public Mono<ReservationOverlapResponseDto> checkBoardroomReservationOverlap(
       long boardroomId, ReservationEventDateDto reservationEventDateDto) {
-    boolean eventOverlap = this.checkAnyEventOverlap(null, boardroomId, reservationEventDateDto);
-    return reservationMapper.toReservationOverlapResponseDto(eventOverlap);
+    return hasReservationOverlap(null, boardroomId, reservationEventDateDto)
+        .map(reservationMapper::toReservationOverlapResponseDto);
+  }
+
+  /**
+   * Returns the boardrooms that already have a clashing booking in the requested window.
+   *
+   * <p>The behaviour is carried over verbatim from the previous implementation, including the
+   * mismatch between the endpoint's name and what it returns. The distinct-boardroom step that was
+   * done in Java has moved into the SQL.
+   */
+  @Override
+  public Flux<BoardroomEventFilterResponseDto> filterAvailableBoardroomsByEventDate(
+      ReservationEventDateDto reservationEventDateDto) {
+    LocalDateTime start =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
+    LocalDateTime end =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
+    return reservationRepository
+        .findBoardroomsWithConflictingEvents(start, end)
+        .map(boardroomMapper::toBoardroomEventFilterResponseDto);
   }
 
   @Override
-  public List<BoardroomEventFilterResponseDto> filterAvailableBoardroomsByEventDate(
-      ReservationEventDateDto reservationEventDateDto) {
-    LocalDateTime startLocalDateTime =
-        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
-    LocalDateTime endLocalDateTime =
-        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
-    List<Reservation> conflictingReservations =
-        reservationRepository.findConflictingEvents(startLocalDateTime, endLocalDateTime);
-    List<Boardroom> boardrooms =
-        conflictingReservations.stream().map(Reservation::getBoardroom).toList();
-    boardrooms =
-        boardrooms.stream()
-            .collect(
-                Collectors.toMap(
-                    Boardroom::getId, boardroom -> boardroom, (existing, replacement) -> existing))
-            .values()
-            .stream()
-            .toList();
-    return boardroomMapper.toBoardroomEventFilterResponseDtoList(boardrooms);
-  }
-
-  private List<Reservation> filterReservationByUser(Boardroom boardroom) {
-    if (boardroom.getReservations().isEmpty()) {
-      return Collections.emptyList();
-    }
-    long userId = currentUserService.getUserId();
-    long boardroomAdminId = boardroom.getAdministrator().getId();
-    if (currentUserService.getUserRole() == RoleType.ADMIN || boardroomAdminId == userId) {
-      return boardroom.getReservations();
-    } else {
-      return boardroom.getReservations().stream()
-          .filter(reservation -> reservation.getUser().getId() == userId)
-          .toList();
-    }
-  }
-
-  private Boardroom getBoardroomByIdFromDb(long boardroomId) {
+  public Mono<Boardroom> findBoardroomById(long boardroomId) {
     return boardroomRepository
         .findByIdAndArchivedFalseAndDeletedFalse(boardroomId)
-        .orElseThrow(() -> new ResourceNotFoundException(RESOURCE_NOT_FOUND));
-  }
-
-  private Map<Long, Boolean> getOngoingMeetingStatuses() {
-    LocalDateTime currentDateTime = dateTimeUtil.getCurrentLocalDateTimeUtc();
-    List<Object[]> ongoingMeetingStatus =
-        reservationRepository.findBoardroomOngoingMeetingStatus(currentDateTime);
-    return ongoingMeetingStatus.stream()
-        .collect(Collectors.toMap(status -> (Long) status[0], status -> (Boolean) status[1]));
-  }
-
-  private AppUser getAppUserByIdFromDb(long userId) {
-    return userRepository
-        .findByIdAndArchivedFalseAndDeletedFalse(userId)
-        .orElseThrow(() -> new ResourceNotFoundException(RESOURCE_NOT_FOUND));
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException(RESOURCE_NOT_FOUND)));
   }
 
   @Override
-  public Boardroom findBoardroomById(long boardroomId) {
-    return this.getBoardroomByIdFromDb(boardroomId);
-  }
-
-  private void deleteBoardroomSoftly(long boardroomId) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    boardroom.setDeleted(true);
-    boardroomRepository.save(boardroom);
-  }
-
-  private void deleteBoardroomContactSoftly(long boardroomId, long contactId) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    BoardroomContact boardroomContact =
-        boardroom.getBoardroomContacts().stream()
-            .filter(contact -> contact.getId() == contactId)
-            .toList()
-            .get(0);
-    boolean isDeleted = boardroomContact.getDeleted();
-    if (isDeleted) {
-      throw new ResourceNotFoundException("Contact not found");
-    } else {
-      boardroomContact.setDeleted(true);
-      boardroomRepository.save(boardroom);
-    }
-  }
-
-  private LockedRoom getLockedRoomByBoardroomId(long boardroomId) {
-    Boardroom boardroom = this.getBoardroomByIdFromDb(boardroomId);
-    return lockedRoomRepository
-        .getByBoardroomAndLockedTrueAndArchivedFalseAndDeletedFalse(boardroom)
-        .orElseThrow(() -> new ResourceNotFoundException("Locked room not found"));
-  }
-
-  private boolean checkAnyEventOverlap(
+  public Mono<Boolean> hasReservationOverlap(
       Long reservationId, Long boardroomId, ReservationEventDateDto reservationEventDateDto) {
-    LocalDateTime startLocalDateTime =
+    LocalDateTime start =
         dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
-    LocalDateTime endLocalDateTime =
+    LocalDateTime end =
         dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
-    List<Reservation> conflictingEvents =
-        (reservationId != null)
-            ? reservationRepository.findBoardroomConflictingEvents(
-                reservationId, boardroomId, startLocalDateTime, endLocalDateTime)
-            : reservationRepository.findBoardroomConflictingEvents(
-                boardroomId, startLocalDateTime, endLocalDateTime);
-    return !conflictingEvents.isEmpty();
+    return reservationRepository
+        .countBoardroomConflictingEvents(reservationId, boardroomId, start, end)
+        .defaultIfEmpty(0L)
+        .map(count -> count > 0);
   }
+
+  @Override
+  public Mono<Void> assertNoReservationOverlap(Reservation reservation) {
+    return reservationRepository
+        .countBoardroomConflictingEvents(
+            reservation.getId(),
+            reservation.getBoardroomId(),
+            reservation.getStartLocalDateTime(),
+            reservation.getEndLocalDateTime())
+        .defaultIfEmpty(0L)
+        .flatMap(
+            count ->
+                count > 0
+                    ? Mono.error(new ReservationOverlapException(OVERLAP_MESSAGE))
+                    : Mono.empty());
+  }
+
+  private Flux<Boardroom> cachedActiveBoardrooms() {
+    return cacheService.cacheList(
+        CacheKeys.BOARDROOM_ALL,
+        CacheTtl.REFERENCE_DATA,
+        Boardroom.class,
+        boardroomRepository.findByArchivedFalseAndDeletedFalse());
+  }
+
+  private Mono<Boardroom> cachedBoardroom(long boardroomId) {
+    return cacheService
+        .cache(
+            CacheKeys.boardroomById(boardroomId),
+            CacheTtl.REFERENCE_DATA,
+            Boardroom.class,
+            boardroomRepository.findByIdAndArchivedFalseAndDeletedFalse(boardroomId))
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException(RESOURCE_NOT_FOUND)));
+  }
+
+  private Flux<BoardroomContactResponseDto> cachedContacts(long boardroomId) {
+    return cacheService.cacheList(
+        CacheKeys.boardroomContacts(boardroomId),
+        CacheTtl.REFERENCE_DATA,
+        BoardroomContactResponseDto.class,
+        boardroomContactRepository
+            .findByBoardroomIdAndArchivedFalseAndDeletedFalse(boardroomId)
+            .map(boardroomContactMapper::toBoardroomContactResponseDto));
+  }
+
+  private Mono<Map<Long, Boolean>> ongoingMeetingStatuses() {
+    return reservationQueryRepository
+        .findBoardroomOngoingMeetingStatus(dateTimeUtil.getCurrentLocalDateTimeUtc())
+        .collect(
+            Collectors.toMap(
+                BoardroomMeetingStatus::boardroomId, BoardroomMeetingStatus::hasOngoingMeeting));
+  }
+
+  private Flux<BoardroomResponseDto> withOngoingStatus(
+      List<Boardroom> boardrooms, Map<Long, Boolean> statuses) {
+    return Flux.fromIterable(boardrooms)
+        .map(
+            boardroom -> {
+              boardroom.setHasOngoingMeeting(statuses.getOrDefault(boardroom.getId(), false));
+              return boardroomMapper.toBoardroomResponseDto(boardroom);
+            });
+  }
+
+  /** The acting user's listing filter and timezone, resolved once per request. */
+  private Mono<Tuple2<java.util.Optional<Long>, String>> readContext() {
+    return Mono.zip(
+        currentUserService.getReadFilterUserId(), currentUserService.getAppUserTimezone());
+  }
+
+  private Mono<dev.johnmaluki.boardroom_booking_backend.user.model.AppUser> findUserById(
+      long userId) {
+    return userRepository
+        .findByIdAndArchivedFalseAndDeletedFalse(userId)
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException(RESOURCE_NOT_FOUND)));
+  }
+
+  private Mono<LockedRoom> getLockedRoomByBoardroomId(long boardroomId) {
+    return findBoardroomById(boardroomId)
+        .flatMap(
+            boardroom ->
+                lockedRoomRepository.findByBoardroomIdAndLockedTrueAndArchivedFalseAndDeletedFalse(
+                    boardroom.getId()))
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException("Locked room not found")));
+  }
+
+  private Mono<Void> evictBoardroomCaches() {
+    return cacheService.evictByPattern(CacheKeys.BOARDROOM_NAMESPACE);
+  }
+
 }

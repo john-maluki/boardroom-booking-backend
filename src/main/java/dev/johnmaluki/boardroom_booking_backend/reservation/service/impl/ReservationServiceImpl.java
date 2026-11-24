@@ -6,402 +6,394 @@ import dev.johnmaluki.boardroom_booking_backend.core.exception.ReservationOverla
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceOwnershipException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceUpdateExeption;
-import dev.johnmaluki.boardroom_booking_backend.core.model.BaseEntity;
 import dev.johnmaluki.boardroom_booking_backend.core.service.CurrentUserService;
-import dev.johnmaluki.boardroom_booking_backend.core.util.DataFilterUtil;
-import dev.johnmaluki.boardroom_booking_backend.messaging.email.EmailService;
-import dev.johnmaluki.boardroom_booking_backend.notification.dto.NotificationResponseDto;
-import dev.johnmaluki.boardroom_booking_backend.notification.mapper.NotificationMapper;
-import dev.johnmaluki.boardroom_booking_backend.notification.model.ApplicationNotification;
-import dev.johnmaluki.boardroom_booking_backend.notification.repository.ApplicationNotificationRepository;
-import dev.johnmaluki.boardroom_booking_backend.notification.util.NotificationUtil;
-import dev.johnmaluki.boardroom_booking_backend.reservation.dto.*;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ApproveReservationDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ChangeVenueDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationEventDateDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationMeetingLinkDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
+import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationQueryRepository;
 import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationRepository;
+import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationNotifier;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationService;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationUtilService;
-import dev.johnmaluki.boardroom_booking_backend.user.model.AppUser;
-import dev.johnmaluki.boardroom_booking_backend.user.service.UserServiceUtil;
+import dev.johnmaluki.boardroom_booking_backend.reservation.view.ReservationView;
 import dev.johnmaluki.boardroom_booking_backend.util.ApprovalStatus;
 import dev.johnmaluki.boardroom_booking_backend.util.DateTimeUtil;
 import dev.johnmaluki.boardroom_booking_backend.util.EmailUtil;
 import dev.johnmaluki.boardroom_booking_backend.util.MeetingType;
-import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
-import dev.johnmaluki.boardroom_booking_backend.util.UserUtil;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
-import java.util.stream.Collectors;
-
+/**
+ * Reservations.
+ *
+ * <p>Two things changed in the move to a reactive stack, beyond the signatures.
+ *
+ * <p>Access scoping is now done in SQL. Previously every listing loaded the whole table and then
+ * dropped rows a non-administrator was not allowed to see; the repositories take a nullable user id
+ * instead, so a regular user's query only ever touches their own rows.
+ *
+ * <p>Notifications and email have left the request path entirely — see {@link
+ * ReservationNotifier}. A create no longer waits for an SMTP conversation before responding, and a
+ * mail server that is down can no longer fail a booking.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ReservationServiceImpl implements ReservationService {
+  private static final String NOT_FOUND = "Reservation could not be found";
+  private static final String OVERLAP_MESSAGE =
+      "Event overlaps with an existing one. Please choose another time.";
+  private static final long DELETE_GRACE_MINUTES = 10;
+
   private final CurrentUserService currentUserService;
   private final ReservationRepository reservationRepository;
+  private final ReservationQueryRepository reservationQueryRepository;
   private final ReservationMapper reservationMapper;
   private final BoardroomServiceUtil boardroomServiceUtil;
-  private final EmailService emailService;
-  private final UserServiceUtil userServiceUtil;
   private final DateTimeUtil dateTimeUtil;
-  private final NotificationUtil notificationUtil;
-  private final ApplicationNotificationRepository applicationNotificationRepository;
-  private final NotificationMapper notificationMapper;
-  private final UserUtil userUtil;
-  private final ReservationUtilService reservationUpdationService;
+  private final ReservationUtilService reservationUtilService;
+  private final ReservationNotifier notifier;
 
   @Override
-  public List<ReservationResponseDto> getAllReservations() {
-    List<Reservation> reservations = reservationRepository.findAllByOrderByStartLocalDateTimeDesc();
-    reservations = this.filterUseReservations(reservations);
-    return reservationMapper.toReservationResponseDtoList(
-        new DataFilterUtil<Reservation>().removeArchivedAndDeletedRecords(reservations));
+  public Flux<ReservationResponseDto> getAllReservations() {
+    return readContext()
+        .flatMapMany(
+            context ->
+                reservationQueryRepository
+                    .findAllActive(context.getT1().orElse(null))
+                    .map(view -> toDto(view, context.getT2())));
   }
 
   @Override
-  public List<ReservationResponseDto> getUpcomingReservations() {
-    LocalDateTime currentDateTime = dateTimeUtil.getCurrentLocalDateTimeUtc();
-    return reservationMapper.toReservationResponseDtoList(
-        new DataFilterUtil<Reservation>()
-            .removeArchivedAndDeletedRecords(
-                this.filterUseReservations(
-                    reservationRepository.findByStartLocalDateTimeAfter(currentDateTime))));
+  public Flux<ReservationResponseDto> getUpcomingReservations() {
+    LocalDateTime now = dateTimeUtil.getCurrentLocalDateTimeUtc();
+    return readContext()
+        .flatMapMany(
+            context ->
+                reservationQueryRepository
+                    .findUpcoming(context.getT1().orElse(null), now)
+                    .map(view -> toDto(view, context.getT2())));
   }
 
   @Override
-  public List<ReservationResponseDto> getAllLiveMeetings() {
-    LocalDateTime currentDateTime = dateTimeUtil.getCurrentLocalDateTimeUtc();
-    return reservationMapper.toReservationResponseDtoList(
-        new DataFilterUtil<Reservation>()
-            .removeArchivedAndDeletedRecords(
-                this.filterUseReservations(
-                    reservationRepository.findLiveMeetings(currentDateTime))));
+  public Flux<ReservationResponseDto> getAllLiveMeetings() {
+    LocalDateTime now = dateTimeUtil.getCurrentLocalDateTimeUtc();
+    return readContext()
+        .flatMapMany(
+            context ->
+                reservationQueryRepository
+                    .findLiveMeetings(context.getT1().orElse(null), now)
+                    .map(view -> toDto(view, context.getT2())));
   }
 
   @Override
-  public List<ReservationResponseDto> getArchivedReservations() {
-    return reservationMapper.toReservationResponseDtoList(
-        this.filterUseReservations(reservationRepository.findByArchivedTrueAndDeletedFalse()));
+  public Flux<ReservationResponseDto> getArchivedReservations() {
+    return readContext()
+        .flatMapMany(
+            context ->
+                reservationQueryRepository
+                    .findArchived(context.getT1().orElse(null))
+                    .map(view -> toDto(view, context.getT2())));
   }
 
   @Override
-  public ReservationResponseDto getReservationById(long reservationId) {
-    Reservation reservation = this.findReservationByIdFromDb(reservationId);
-
-    if (!this.hasOwnership(reservation)) {
-      throw new ResourceOwnershipException("Not allowed to access");
-    }
-    return reservationMapper.toReservationResponseDto(reservation);
+  public Mono<ReservationResponseDto> getReservationById(long reservationId) {
+    return findViewById(reservationId)
+        .flatMap(view -> assertOwnership(view).thenReturn(view))
+        .flatMap(this::toDtoForCurrentUser);
   }
 
   @Override
-  public ReservationResponseDto createReservation(ReservationDto reservationDto) {
-    Boardroom boardroom = boardroomServiceUtil.findBoardroomById(reservationDto.boardroomId());
-    ReservationEventDateDto reservationEventDateDto =
+  @Transactional
+  public Mono<ReservationResponseDto> createReservation(ReservationDto reservationDto) {
+    ReservationEventDateDto window =
         ReservationEventDateDto.builder()
             .startDateTime(reservationDto.startDateTime())
             .endDateTime(reservationDto.endDateTime())
             .build();
-    this.checkEventOverlap(null, boardroom.getId(), reservationEventDateDto);
-    AppUser user = currentUserService.getAppUser();
-    Reservation reservation = reservationMapper.toReservation(reservationDto);
-    reservation.setBoardroom(boardroom);
-    reservation.setUser(user);
-    Reservation savedReservation = reservationRepository.save(reservation);
-    // After successful saving do sent email to boardroom admin for approval
-    if (savedReservation.getId() != null) {
-      this.sendReservationPendingNotification(boardroom, savedReservation);
-      this.sendMailForApproval(boardroom, savedReservation);
-    }
-    return reservationMapper.toReservationResponseDto(savedReservation);
+
+    return boardroomServiceUtil
+        .findBoardroomById(reservationDto.boardroomId())
+        .flatMap(
+            boardroom ->
+                assertNoOverlap(null, boardroom.getId(), window)
+                    .then(Mono.zip(currentUserService.getAppUser(), Mono.just(boardroom))))
+        .flatMap(
+            tuple -> {
+              Boardroom boardroom = tuple.getT2();
+              Reservation reservation = reservationMapper.toReservation(reservationDto);
+              reservation.setBoardroomId(boardroom.getId());
+              reservation.setUserId(tuple.getT1().getId());
+              return reservationRepository
+                  .save(reservation)
+                  .map(saved -> reservationMapper.toView(saved, boardroom, tuple.getT1()));
+            })
+        .flatMap(
+            view ->
+                currentUserService
+                    .getAppUserTimezone()
+                    .flatMap(
+                        timeZone ->
+                            notifier
+                                .requestApproval(view, timeZone)
+                                .thenReturn(toDto(view, timeZone))));
   }
 
   @Override
-  public ReservationResponseDto approveReservation(
+  @Transactional
+  public Mono<ReservationResponseDto> approveReservation(
       long reservationId, ApproveReservationDto approveReservationDto) {
-    Reservation reservation = this.findReservationByIdFromDb(reservationId);
     ApprovalStatus approvalStatus = approveReservationDto.approvalStatus();
-    reservation.setApprovalStatus(approvalStatus);
-    if (approvalStatus == ApprovalStatus.DECLINED) {
-      reservation.setCancellationMessage(approveReservationDto.cancellationMessage());
-    } else {
-      reservation.setCancellationMessage(null);
-    }
-    Reservation savedReservation = reservationRepository.save(reservation);
-    if (savedReservation.getApprovalStatus() == ApprovalStatus.APPROVED) {
-      this.sendReservationApprovalNotification(savedReservation);
-      if (reservation.getMeetingType() != MeetingType.PHYSICAL) {
-        this.sendEmailToAdminsForMeetLinkCreation(reservation);
-      }
-    }
-    return reservationMapper.toReservationResponseDto(savedReservation);
+    return findEntityById(reservationId)
+        .flatMap(
+            reservation -> {
+              reservation.setApprovalStatus(approvalStatus);
+              reservation.setCancellationMessage(
+                  approvalStatus == ApprovalStatus.DECLINED
+                      ? approveReservationDto.cancellationMessage()
+                      : null);
+              return reservationRepository.save(reservation);
+            })
+        .flatMap(saved -> findViewById(saved.getId()))
+        .flatMap(
+            view ->
+                currentUserService
+                    .getAppUserTimezone()
+                    .flatMap(
+                        timeZone -> {
+                          if (view.approvalStatus() != ApprovalStatus.APPROVED) {
+                            return Mono.just(toDto(view, timeZone));
+                          }
+                          Mono<Void> announcements = notifier.announceApproval(view);
+                          if (view.meetingType() != MeetingType.PHYSICAL) {
+                            // A physical meeting needs no link, so nobody is asked to create one.
+                            announcements =
+                                announcements.then(notifier.requestMeetingLink(view, timeZone));
+                          }
+                          return announcements.thenReturn(toDto(view, timeZone));
+                        }));
   }
 
   @Override
-  public ReservationResponseDto updateReservationWithMeetingLink(
+  @Transactional
+  public Mono<ReservationResponseDto> updateReservationWithMeetingLink(
       long reservationId, ReservationMeetingLinkDto reservationMeetingLinkDto) {
-    Reservation reservation = this.findReservationByIdFromDb(reservationId);
-    boolean wasNUll = reservation.getMeetingLink() == null;
-    reservation.setMeetingLink(reservationMeetingLinkDto.meetingLink());
-    Reservation savedReservation = reservationRepository.save(reservation);
-    if (wasNUll && reservation.getMeetingType() != MeetingType.PHYSICAL) {
-      this.sendEmailToAttendeesPlusMeetingCreator(savedReservation);
-    } else {
-      String subject = EmailUtil.SUBJECT_RESERVATION_MEETING_LINK_UPDATE;
-      this.updateAttendeesPLusAdminsOfMeetingDetailChange(savedReservation, subject);
-    }
-    return reservationMapper.toReservationResponseDto(savedReservation);
+    return findEntityById(reservationId)
+        .flatMap(
+            reservation -> {
+              boolean wasUnset = reservation.getMeetingLink() == null;
+              reservation.setMeetingLink(reservationMeetingLinkDto.meetingLink());
+              return reservationRepository
+                  .save(reservation)
+                  .flatMap(saved -> findViewById(saved.getId()))
+                  .zipWith(Mono.just(wasUnset));
+            })
+        .flatMap(
+            tuple -> {
+              ReservationView view = tuple.getT1();
+              boolean firstLink = tuple.getT2();
+              return currentUserService
+                  .getAppUserTimezone()
+                  .flatMap(
+                      timeZone -> {
+                        Mono<Void> announcement =
+                            firstLink && view.meetingType() != MeetingType.PHYSICAL
+                                ? notifier.announceMeetingLink(view, timeZone)
+                                : notifier.announceDetailChange(
+                                    view,
+                                    timeZone,
+                                    EmailUtil.SUBJECT_RESERVATION_MEETING_LINK_UPDATE);
+                        return announcement.thenReturn(toDto(view, timeZone));
+                      });
+            });
   }
 
   @Override
-  public ReservationResponseDto changeReservationVenue(
+  @Transactional
+  public Mono<ReservationResponseDto> changeReservationVenue(
       long reservationId, ChangeVenueDto changeVenueDto) {
-    Reservation reservation = this.findReservationByIdFromDb(reservationId);
-    Boardroom boardroom = boardroomServiceUtil.findBoardroomById(changeVenueDto.boardroomId());
-    boardroomServiceUtil.checkAnyReservationOverlap(reservation);
-    reservation.setBoardroom(boardroom);
-    reservation.setApprovalStatus(ApprovalStatus.PENDING);
-    reservation.setCancellationMessage(null);
-    Reservation savedReservation = reservationRepository.save(reservation);
-    if (Objects.equals(savedReservation.getBoardroom().getId(), boardroom.getId())) {
-      if (savedReservation.getApprovalStatus() == ApprovalStatus.PENDING) {
-        this.sendMailForApproval(boardroom, savedReservation);
-      } else if (savedReservation.getApprovalStatus() == ApprovalStatus.APPROVED) {
-        String subject = EmailUtil.SUBJECT_RESERVATION_VENUE_CHANGE;
-        this.updateAttendeesPLusAdminsOfMeetingDetailChange(savedReservation, subject);
-      }
-    }
-    return reservationMapper.toReservationResponseDto(savedReservation);
+    return Mono.zip(
+            findEntityById(reservationId),
+            boardroomServiceUtil.findBoardroomById(changeVenueDto.boardroomId()))
+        .flatMap(
+            tuple -> {
+              Reservation reservation = tuple.getT1();
+              Boardroom boardroom = tuple.getT2();
+              reservation.setBoardroomId(boardroom.getId());
+              // Moving a booking sends it back for approval by the new boardroom's administrator.
+              reservation.setApprovalStatus(ApprovalStatus.PENDING);
+              reservation.setCancellationMessage(null);
+              return boardroomServiceUtil
+                  .assertNoReservationOverlap(reservation)
+                  .then(reservationRepository.save(reservation));
+            })
+        .flatMap(saved -> findViewById(saved.getId()))
+        .flatMap(
+            view ->
+                currentUserService
+                    .getAppUserTimezone()
+                    .flatMap(
+                        timeZone ->
+                            notifier
+                                .requestApproval(view, timeZone)
+                                .thenReturn(toDto(view, timeZone))));
   }
 
   @Override
-  public ReservationResponseDto rescheduleReservation(
+  @Transactional
+  public Mono<ReservationResponseDto> rescheduleReservation(
       long reservationId, ReservationEventDateDto reservationEventDateDto) {
-    LocalDateTime startLocalDateTime =
+    LocalDateTime start =
         dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
-    LocalDateTime endLocalDateTime =
+    LocalDateTime end =
         dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
-    Reservation reservation = this.findReservationByIdFromDb(reservationId);
-    this.checkEventOverlap(
-        reservationId, reservation.getBoardroom().getId(), reservationEventDateDto);
-    reservation.setStartLocalDateTime(startLocalDateTime);
-    reservation.setEndLocalDateTime(endLocalDateTime);
-    Reservation savedReservation = reservationRepository.save(reservation);
-    String subject = EmailUtil.SUBJECT_RESERVATION_RESCHEDULED;
-    this.updateAttendeesPLusAdminsOfMeetingDetailChange(savedReservation, subject);
-    return reservationMapper.toReservationResponseDto(savedReservation);
+
+    return findEntityById(reservationId)
+        .flatMap(
+            reservation ->
+                assertNoOverlap(reservationId, reservation.getBoardroomId(), reservationEventDateDto)
+                    .then(Mono.just(reservation)))
+        .flatMap(
+            reservation -> {
+              reservation.setStartLocalDateTime(start);
+              reservation.setEndLocalDateTime(end);
+              return reservationRepository.save(reservation);
+            })
+        .flatMap(saved -> findViewById(saved.getId()))
+        .flatMap(
+            view ->
+                currentUserService
+                    .getAppUserTimezone()
+                    .flatMap(
+                        timeZone ->
+                            notifier
+                                .announceDetailChange(
+                                    view, timeZone, EmailUtil.SUBJECT_RESERVATION_RESCHEDULED)
+                                .thenReturn(toDto(view, timeZone))));
+  }
+
+  /**
+   * A booking cancelled within ten minutes of being made is removed outright, on the assumption it
+   * was a mistake; after that it is soft-deleted so the audit trail survives.
+   */
+  @Override
+  @Transactional
+  public Mono<Void> removeReservation(long reservationId) {
+    return findEntityById(reservationId)
+        .flatMap(
+            reservation -> {
+              if (createdWithinGracePeriod(reservation.getCreatedAt())) {
+                return reservationRepository.delete(reservation);
+              }
+              reservation.setDeleted(true);
+              return reservationRepository.save(reservation).then();
+            });
   }
 
   @Override
-  public void removeReservation(long reservationId) {
-    Reservation reservation = this.findReservationByIdFromDb(reservationId);
-    boolean isCreationDateLessThan10Minutes =
-        this.checkCreationDateLessThan10Minutes(reservation.getCreatedAt());
-    if (isCreationDateLessThan10Minutes) {
-      reservationRepository.delete(reservation);
-    } else {
-      reservation.setDeleted(true);
-      reservationRepository.save(reservation);
-    }
-  }
-
-  @Override
-  public ReservationResponseDto updateReservation(
+  @Transactional
+  public Mono<ReservationResponseDto> updateReservation(
       long reservationId, ReservationDto reservationDto) {
-    Reservation currentReservation = this.findReservationByIdFromDb(reservationId);
-    Reservation newReservation = reservationMapper.toReservation(reservationDto);
-    boolean anyMeetingUpdate =
-        reservationUpdationService.checkAnyReservationUpdate(newReservation, currentReservation);
-    Set<String> newAttendees =
-        reservationUpdationService.getNewAttendees(newReservation, currentReservation);
+    Reservation incoming = reservationMapper.toReservation(reservationDto);
+    return findEntityById(reservationId)
+        .flatMap(
+            current -> {
+              boolean anyMeetingUpdate =
+                  reservationUtilService.checkAnyReservationUpdate(incoming, current);
+              Set<String> newAttendees =
+                  reservationUtilService.getNewAttendees(incoming, current);
+              if (!anyMeetingUpdate && newAttendees.isEmpty()) {
+                return Mono.<Reservation>error(
+                    new ResourceUpdateExeption("No changes detected!"));
+              }
+              current.setMeetingTitle(incoming.getMeetingTitle());
+              current.setMeetingDescription(incoming.getMeetingDescription());
+              current.setMeetingType(incoming.getMeetingType());
+              current.setAttendees(incoming.getAttendees());
+              current.setIctSupportRequired(incoming.isIctSupportRequired());
+              current.setRecordMeeting(incoming.isRecordMeeting());
+              current.setUrgentMeeting(incoming.isUrgentMeeting());
+              return reservationRepository.save(current);
+            })
+        .flatMap(saved -> findViewById(saved.getId()))
+        .flatMap(this::toDtoForCurrentUser);
+  }
 
-    if (anyMeetingUpdate || !newAttendees.isEmpty()) {
-      currentReservation.setMeetingTitle(newReservation.getMeetingTitle());
-      currentReservation.setMeetingDescription(newReservation.getMeetingTitle());
-      currentReservation.setMeetingType(newReservation.getMeetingType());
-      currentReservation.setAttendees(newReservation.getAttendees());
-      currentReservation.setIctSupportRequired(newReservation.isIctSupportRequired());
-      currentReservation.setRecordMeeting(newReservation.isRecordMeeting());
-      currentReservation.setUrgentMeeting(newReservation.isUrgentMeeting());
-      return reservationMapper.toReservationResponseDto(reservationRepository.save(currentReservation));
-    } else {
-      throw new ResourceUpdateExeption("No changes detected!");
+  private boolean createdWithinGracePeriod(LocalDateTime createdAt) {
+    if (createdAt == null) {
+      return false;
     }
+    return ChronoUnit.MINUTES.between(createdAt, LocalDateTime.now()) <= DELETE_GRACE_MINUTES;
   }
 
-  private boolean checkCreationDateLessThan10Minutes(LocalDateTime createdAt) {
-    LocalDateTime now = LocalDateTime.now();
-    long minutesDifference = ChronoUnit.MINUTES.between(createdAt, now);
-    return minutesDifference <= 10;
+  /**
+   * A booking is visible to its owner, to the administrator of the boardroom it is in, and to any
+   * system administrator.
+   */
+  private Mono<Void> assertOwnership(ReservationView view) {
+    return currentUserService
+        .getCurrentUser()
+        .flatMap(
+            principal -> {
+              boolean allowed =
+                  principal.isAdmin()
+                      || principal.getUserId() == view.userId()
+                      || (view.boardroomAdministratorId() != null
+                          && principal.getUserId() == view.boardroomAdministratorId());
+              return allowed
+                  ? Mono.<Void>empty()
+                  : Mono.error(new ResourceOwnershipException("Not allowed to access"));
+            });
   }
 
-  private List<Reservation> filterUseReservations(List<Reservation> reservations) {
-    if (currentUserService.getUserRole() != RoleType.ADMIN) {
-      return reservations.stream()
-          .filter(reservation -> reservation.getUser().getId() == currentUserService.getUserId())
-          .toList();
-    } else {
-      return reservations;
-    }
+  private Mono<Void> assertNoOverlap(
+      Long reservationId, Long boardroomId, ReservationEventDateDto window) {
+    return boardroomServiceUtil
+        .hasReservationOverlap(reservationId, boardroomId, window)
+        .flatMap(
+            overlaps ->
+                Boolean.TRUE.equals(overlaps)
+                    ? Mono.error(new ReservationOverlapException(OVERLAP_MESSAGE))
+                    : Mono.empty());
   }
 
-  private boolean hasOwnership(Reservation reservation) {
-    boolean isAdminOrBoardroomSupervisor =
-        currentUserService.getUserRole() == RoleType.ADMIN
-            || currentUserService.getUserId()
-                == reservation.getBoardroom().getAdministrator().getId();
-    if (isAdminOrBoardroomSupervisor) {
-      return true;
-    }
-    return currentUserService.getUserId() == reservation.getUser().getId();
-  }
-
-  private Reservation findReservationByIdFromDb(long reservationId) {
+  private Mono<Reservation> findEntityById(long reservationId) {
     return reservationRepository
         .findByIdAndArchivedFalseAndDeletedFalse(reservationId)
-        .orElseThrow(() -> new ResourceNotFoundException("Reservation could not be found"));
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException(NOT_FOUND)));
   }
 
-  private void sendMailForApproval(Boardroom boardroom, Reservation reservation) {
-    String to = boardroom.getAdministrator().getEmail();
-    String subject = EmailUtil.SUBJECT_RESERVATION_CONFIRMATION;
-    LocalDateTime startDate =
-        dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(
-            reservation.getStartLocalDateTime(), currentUserService.getAppUserTimezone());
-    LocalDateTime endDate =
-        dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(
-            reservation.getEndLocalDateTime(), currentUserService.getAppUserTimezone());
-    Map<String, Object> templateModel = new HashMap<>();
-    templateModel.put("boardroomName", boardroom.getName());
-    templateModel.put("meetingTitle", reservation.getMeetingTitle());
-    templateModel.put("meetingDescription", reservation.getMeetingDescription());
-    templateModel.put("startDate", startDate.toLocalDate());
-    templateModel.put("endDate", endDate.toLocalDate());
-    templateModel.put("startTime", startDate.toLocalTime());
-    templateModel.put("endTime", endDate.toLocalTime());
-    emailService.sendEmailForReservationApproval(to, subject, templateModel);
+  private Mono<ReservationView> findViewById(long reservationId) {
+    return reservationQueryRepository
+        .findViewById(reservationId)
+        .switchIfEmpty(Mono.error(new ResourceNotFoundException(NOT_FOUND)));
   }
 
-  private Set<String> getApplicationAdministratorEmails() {
-    return userServiceUtil.getAllSystemAdministrators().stream()
-        .map(AppUser::getEmail)
-        .collect(Collectors.toSet());
+  private ReservationResponseDto toDto(ReservationView view, String timeZone) {
+    return reservationMapper.toReservationResponseDto(view, timeZone);
   }
 
-  private void sendEmailToAdminsForMeetLinkCreation(Reservation reservation) {
-    Set<String> sendTo = this.getApplicationAdministratorEmails();
-    String subject = EmailUtil.SUBJECT_RESERVATION_ADMIN_APPROVAL;
-    Map<String, Object> templateModel = this.prepareMailTemplate(reservation);
-    emailService.notifyAdministratorsOfReservationApproval(sendTo, subject, templateModel);
+  private Mono<ReservationResponseDto> toDtoForCurrentUser(ReservationView view) {
+    return currentUserService.getAppUserTimezone().map(timeZone -> toDto(view, timeZone));
   }
 
-  private void sendEmailToAttendeesPlusMeetingCreator(Reservation reservation) {
-    Set<String> attendees = this.getAttendeesFromCSVPlusCreator(reservation);
-    String subject = EmailUtil.SUBJECT_RESERVATION_MEETING_LINK;
-    Map<String, Object> templateModel = this.prepareMailTemplate(reservation);
-    emailService.sendEmailToAttendeesPlusCreator(attendees, subject, templateModel);
-  }
-
-  private void updateAttendeesPLusAdminsOfMeetingDetailChange(
-      Reservation reservation, String subject) {
-    Set<String> attendees = this.getAttendeesFromCSVPlusCreator(reservation);
-    Set<String> admins = this.getApplicationAdministratorEmails();
-    Map<String, Object> templateModel = this.prepareMailTemplate(reservation);
-    templateModel.put("detailChange", true);
-    emailService.sendNotificationEmailOfReservationUpdate(attendees, subject, templateModel);
-    emailService.sendNotificationEmailOfReservationUpdate(admins, subject, templateModel);
-  }
-
-  private Map<String, Object> prepareMailTemplate(Reservation reservation) {
-    LocalDateTime startDate =
-        dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(
-            reservation.getStartLocalDateTime(), currentUserService.getAppUserTimezone());
-    LocalDateTime endDate =
-        dateTimeUtil.obtainLocalDateTimeBasedOnUserZone(
-            reservation.getEndLocalDateTime(), currentUserService.getAppUserTimezone());
-    Map<String, Object> templateModel = new HashMap<>();
-    templateModel.put("boardroomName", reservation.getBoardroom().getName());
-    templateModel.put("bookedBy", reservation.getUser().getEmail());
-    templateModel.put("meetingType", reservation.getMeetingType());
-    templateModel.put("startDate", startDate.toLocalDate());
-    templateModel.put("endDate", endDate.toLocalDate());
-    templateModel.put("startTime", startDate.toLocalTime());
-    templateModel.put("endTime", endDate.toLocalTime());
-    templateModel.put("detailChange", false);
-    templateModel.put("meetingLink", reservation.getMeetingLink());
-    templateModel.put("attendees", this.getAttendeesFromCSVPlusCreator(reservation));
-    templateModel.put("meetingTitle", reservation.getMeetingTitle());
-    templateModel.put("meetingDescription", reservation.getMeetingDescription());
-    return templateModel;
-  }
-
-  private Set<String> getAttendeesFromCSVPlusCreator(Reservation reservation) {
-    List<String> result = new ArrayList<>();
-    String[] items = reservation.getAttendees().split(",");
-    for (String item : items) {
-      result.add(item.trim());
-    }
-    String creator = reservation.getUser().getEmail();
-    String boardroomEmail = reservation.getBoardroom().getEmail();
-    if (boardroomEmail != null && !boardroomEmail.isEmpty()) {
-      result.add(boardroomEmail);
-    }
-    result.add(creator);
-    return new HashSet<>(result);
-  }
-
-  private void sendReservationPendingNotification(
-      Boardroom boardroom, Reservation savedReservation) {
-    List<Long> recipients = List.of(boardroom.getAdministrator().getId());
-    ApplicationNotification applicationNotification =
-        ApplicationNotification.builder()
-            .message(savedReservation.getMeetingTitle())
-            .reservation(savedReservation)
-            .recipient(userUtil.recipientsToString(recipients))
-            .title("Reservation pending approval")
-            .build();
-    applicationNotification = applicationNotificationRepository.save(applicationNotification);
-    NotificationResponseDto notificationResponseDto =
-        notificationMapper.toNotificationResponseDto(applicationNotification);
-    notificationUtil.sendNotificationToUser(boardroom.getAdministrator(), notificationResponseDto);
-    if (boardroom.getAdministrator().getRole().getAuthority() != RoleType.ADMIN) {
-      notificationUtil.sendNotificationToAdmins(notificationResponseDto);
-    }
-  }
-
-  public void sendReservationApprovalNotification(Reservation reservation) {
-    AppUser reservationUser = reservation.getUser();
-    List<AppUser> userAdmins = userServiceUtil.getAllSystemAdministrators();
-    userAdmins.add(reservationUser);
-    List<Long> recipients = userAdmins.stream().map(BaseEntity::getId).toList();
-    ApplicationNotification applicationNotification =
-        ApplicationNotification.builder()
-            .message(reservation.getMeetingTitle())
-            .reservation(reservation)
-            .recipient(userUtil.recipientsToString(recipients))
-            .title("Reservation  Approved")
-            .build();
-    applicationNotification = applicationNotificationRepository.save(applicationNotification);
-    NotificationResponseDto notificationResponseDto =
-        notificationMapper.toNotificationResponseDto(applicationNotification);
-    notificationUtil.sendNotificationToUser(reservationUser, notificationResponseDto);
-    notificationUtil.sendNotificationToAdmins(notificationResponseDto);
-  }
-
-  private void checkEventOverlap(
-      Long reservationId, Long boardroomId, ReservationEventDateDto reservationEventDateDto) {
-
-    boolean hasOverlap =
-        boardroomServiceUtil.checkAnyReservationOverlap(
-            reservationId, boardroomId, reservationEventDateDto);
-    if (hasOverlap) {
-      throw new ReservationOverlapException(
-          "Event overlaps with an existing one. Please choose another time.");
-    }
+  /** The acting user's listing filter and timezone, resolved once per request. */
+  private Mono<Tuple2<Optional<Long>, String>> readContext() {
+    return Mono.zip(
+        currentUserService.getReadFilterUserId(), currentUserService.getAppUserTimezone());
   }
 }
