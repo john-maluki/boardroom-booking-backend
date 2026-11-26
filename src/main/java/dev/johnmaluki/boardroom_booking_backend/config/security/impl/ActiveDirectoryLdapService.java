@@ -15,7 +15,7 @@ import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -24,13 +24,20 @@ import reactor.core.scheduler.Schedulers;
  * Binds against the KEMRI Active Directory to authenticate, then reads the user's display name and
  * principal name.
  *
+ * <p>Active whenever {@code app.auth.directory-provider=active-directory} — in {@code prod} that
+ * is the only option ({@code application-prod.properties} sets it unconditionally), and in {@code
+ * dev} it is an opt-in alternative to {@link EmbeddedLdapService}'s local test directory, switched
+ * on in {@code application-dev.properties} to log in against real AD accounts while developing.
+ * Requires {@code LDAP_PROD_SERVER_URL_1} and {@code LDAP_PROD_DOMAIN_NAME} in {@code .env} either
+ * way.
+ *
  * <p>JNDI is a blocking API with no reactive counterpart, so the whole exchange is wrapped in
  * {@code Mono.fromCallable} and pushed onto {@code boundedElastic}. That scheduler exists for
  * precisely this case: it grows to absorb blocking calls and keeps them off the small, fixed pool
  * of Netty event loops, where a directory that is slow to answer would otherwise stall every other
  * in-flight request on that loop.
  */
-@Profile("!dev")
+@ConditionalOnProperty(name = "app.auth.directory-provider", havingValue = "active-directory")
 @Service
 @RequiredArgsConstructor
 @Slf4j

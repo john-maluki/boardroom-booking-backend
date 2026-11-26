@@ -57,8 +57,13 @@ public interface BoardroomService {
 
   Mono<BoardroomResponseDto> updateBoardroomById(long boardroomId, BoardroomDto boardroomDto);
 
+  /**
+   * Whether a window is free in a boardroom, with the clashing bookings if not.
+   *
+   * @param excludeReservationId a booking to ignore (the one being moved), or {@code null}
+   */
   Mono<ReservationOverlapResponseDto> checkBoardroomReservationOverlap(
-      long boardroomId, ReservationEventDateDto reservationEventDateDto);
+      long boardroomId, ReservationEventDateDto reservationEventDateDto, Long excludeReservationId);
 
   Flux<BoardroomEventFilterResponseDto> filterAvailableBoardroomsByEventDate(
       ReservationEventDateDto reservationEventDateDto);

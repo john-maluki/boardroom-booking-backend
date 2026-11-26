@@ -6,8 +6,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.stereotype.Component;
+import java.time.Duration;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 /**
  * The fan-out bus behind the Server-Sent Events endpoint.
@@ -50,9 +52,20 @@ public class NotificationStreamBus {
       synchronized (this) {
         current = shared;
         if (current == null) {
+          // defer(): listenToChannel creates its Redis listener container when it is called
+          // and destroys it when the subscription ends. Without defer, share() would re-subscribe
+          // to that destroyed container once the last client disconnected, and every later
+          // stream would fail with "Connection is closed". retryWhen() reconnects if Redis drops.
           current =
-              redisTemplate
-                  .listenToChannel(CHANNEL)
+              Flux.defer(() -> redisTemplate.listenToChannel(CHANNEL))
+                  .retryWhen(
+                      Retry.backoff(Long.MAX_VALUE, Duration.ofSeconds(1))
+                          .maxBackoff(Duration.ofSeconds(30))
+                          .doBeforeRetry(
+                              signal ->
+                                  log.warn(
+                                      "SSE bus lost its Redis subscription, reconnecting: {}",
+                                      signal.failure().getMessage())))
                   .map(message -> message.getMessage())
                   .flatMap(this::deserialise)
                   .doOnSubscribe(subscription -> log.debug("Subscribed to SSE bus {}", CHANNEL))

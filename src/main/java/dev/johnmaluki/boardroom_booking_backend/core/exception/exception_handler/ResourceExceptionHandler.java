@@ -20,30 +20,30 @@ public class ResourceExceptionHandler {
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<Object> resourceNotFoundExceptionHandler(
       ResourceNotFoundException exception) {
-    return errorResponse(exception.getMessage(), exception.getCause(), HttpStatus.NOT_FOUND);
+    return errorResponse(exception.getMessage(), HttpStatus.NOT_FOUND);
   }
 
   @ExceptionHandler(ResourceOwnershipException.class)
   public ResponseEntity<Object> resourceAccessExceptionHandler(
       ResourceOwnershipException exception) {
-    return errorResponse(exception.getMessage(), exception.getCause(), HttpStatus.FORBIDDEN);
+    return errorResponse(exception.getMessage(), HttpStatus.FORBIDDEN);
   }
 
   @ExceptionHandler(JwtTokenException.class)
   public ResponseEntity<Object> jwtTokenExceptionHandler(JwtTokenException exception) {
-    return errorResponse(exception.getMessage(), exception.getCause(), HttpStatus.FORBIDDEN);
+    return errorResponse(exception.getMessage(), HttpStatus.FORBIDDEN);
   }
 
   @ExceptionHandler(DuplicateResourceException.class)
   public ResponseEntity<Object> duplicateResourceExceptionHandler(
       DuplicateResourceException exception) {
-    return errorResponse(exception.getMessage(), exception.getCause(), HttpStatus.BAD_REQUEST);
+    return errorResponse(exception.getMessage(), HttpStatus.BAD_REQUEST);
   }
 
   /** Failed login or an unusable refresh token. */
   @ExceptionHandler(BadCredentialsException.class)
   public ResponseEntity<Object> badCredentialsExceptionHandler(BadCredentialsException exception) {
-    return errorResponse(exception.getMessage(), null, HttpStatus.UNAUTHORIZED);
+    return errorResponse(exception.getMessage(), HttpStatus.UNAUTHORIZED);
   }
 
   /**
@@ -61,14 +61,8 @@ public class ResourceExceptionHandler {
     return new ResponseEntity<>(errorMessage, HttpStatus.BAD_REQUEST);
   }
 
-  private ResponseEntity<Object> errorResponse(
-      String message, Throwable cause, HttpStatus status) {
-    ResourceErrorMessage errorMessage =
-        ResourceErrorMessage.builder()
-            .message(message)
-            .httpStatus(status)
-            .throwable(cause)
-            .build();
-    return new ResponseEntity<>(errorMessage, status);
+  private ResponseEntity<Object> errorResponse(String message, HttpStatus status) {
+    return new ResponseEntity<>(
+        ResourceErrorMessage.builder().message(message).httpStatus(status).build(), status);
   }
 }

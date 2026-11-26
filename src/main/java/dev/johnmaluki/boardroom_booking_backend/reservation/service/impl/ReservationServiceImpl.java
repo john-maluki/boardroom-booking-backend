@@ -2,6 +2,7 @@ package dev.johnmaluki.boardroom_booking_backend.reservation.service.impl;
 
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.service.BoardroomServiceUtil;
+import dev.johnmaluki.boardroom_booking_backend.core.exception.InvalidReservationWindowException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ReservationOverlapException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceNotFoundException;
 import dev.johnmaluki.boardroom_booking_backend.core.exception.ResourceOwnershipException;
@@ -15,6 +16,7 @@ import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationMeeti
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
+import dev.johnmaluki.boardroom_booking_backend.notification.repository.ApplicationNotificationRepository;
 import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationQueryRepository;
 import dev.johnmaluki.boardroom_booking_backend.reservation.repository.ReservationRepository;
 import dev.johnmaluki.boardroom_booking_backend.reservation.service.ReservationNotifier;
@@ -67,6 +69,7 @@ public class ReservationServiceImpl implements ReservationService {
   private final DateTimeUtil dateTimeUtil;
   private final ReservationUtilService reservationUtilService;
   private final ReservationNotifier notifier;
+  private final ApplicationNotificationRepository notificationRepository;
 
   @Override
   public Flux<ReservationResponseDto> getAllReservations() {
@@ -126,11 +129,13 @@ public class ReservationServiceImpl implements ReservationService {
             .endDateTime(reservationDto.endDateTime())
             .build();
 
-    return boardroomServiceUtil
-        .findBoardroomById(reservationDto.boardroomId())
+    return assertValidWindow(window)
+        .then(boardroomServiceUtil.findBoardroomById(reservationDto.boardroomId()))
         .flatMap(
             boardroom ->
-                assertNoOverlap(null, boardroom.getId(), window)
+                boardroomServiceUtil
+                    .lockBoardroomForBooking(boardroom.getId())
+                    .then(assertNoOverlap(null, boardroom.getId(), window))
                     .then(Mono.zip(currentUserService.getAppUser(), Mono.just(boardroom))))
         .flatMap(
             tuple -> {
@@ -166,7 +171,15 @@ public class ReservationServiceImpl implements ReservationService {
                   approvalStatus == ApprovalStatus.DECLINED
                       ? approveReservationDto.cancellationMessage()
                       : null);
-              return reservationRepository.save(reservation);
+              if (approvalStatus == ApprovalStatus.DECLINED) {
+                return reservationRepository.save(reservation);
+              }
+              // Declined bookings don't hold the room, so its slot may have been taken since.
+              // Accepting (or re-opening) one must not double-book the room.
+              return boardroomServiceUtil
+                  .lockBoardroomForBooking(reservation.getBoardroomId())
+                  .then(boardroomServiceUtil.assertNoReservationOverlap(reservation))
+                  .then(reservationRepository.save(reservation));
             })
         .flatMap(saved -> findViewById(saved.getId()))
         .flatMap(
@@ -238,7 +251,8 @@ public class ReservationServiceImpl implements ReservationService {
               reservation.setApprovalStatus(ApprovalStatus.PENDING);
               reservation.setCancellationMessage(null);
               return boardroomServiceUtil
-                  .assertNoReservationOverlap(reservation)
+                  .lockBoardroomForBooking(boardroom.getId())
+                  .then(boardroomServiceUtil.assertNoReservationOverlap(reservation))
                   .then(reservationRepository.save(reservation));
             })
         .flatMap(saved -> findViewById(saved.getId()))
@@ -262,10 +276,15 @@ public class ReservationServiceImpl implements ReservationService {
     LocalDateTime end =
         dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
 
-    return findEntityById(reservationId)
+    return assertValidWindow(reservationEventDateDto)
+        .then(findEntityById(reservationId))
         .flatMap(
             reservation ->
-                assertNoOverlap(reservationId, reservation.getBoardroomId(), reservationEventDateDto)
+                boardroomServiceUtil
+                    .lockBoardroomForBooking(reservation.getBoardroomId())
+                    .then(
+                        assertNoOverlap(
+                            reservationId, reservation.getBoardroomId(), reservationEventDateDto))
                     .then(Mono.just(reservation)))
         .flatMap(
             reservation -> {
@@ -297,7 +316,10 @@ public class ReservationServiceImpl implements ReservationService {
         .flatMap(
             reservation -> {
               if (createdWithinGracePeriod(reservation.getCreatedAt())) {
-                return reservationRepository.delete(reservation);
+                // Notifications reference the reservation, so they go first.
+                return notificationRepository
+                    .deleteByReservationId(reservation.getId())
+                    .then(reservationRepository.delete(reservation));
               }
               reservation.setDeleted(true);
               return reservationRepository.save(reservation).then();
@@ -362,13 +384,33 @@ public class ReservationServiceImpl implements ReservationService {
 
   private Mono<Void> assertNoOverlap(
       Long reservationId, Long boardroomId, ReservationEventDateDto window) {
+    LocalDateTime start = dateTimeUtil.obtainLocalDateTimeFromISOString(window.startDateTime());
+    LocalDateTime end = dateTimeUtil.obtainLocalDateTimeFromISOString(window.endDateTime());
     return boardroomServiceUtil
-        .hasReservationOverlap(reservationId, boardroomId, window)
+        .findConflicts(reservationId, boardroomId, start, end)
+        .collectList()
         .flatMap(
-            overlaps ->
-                Boolean.TRUE.equals(overlaps)
-                    ? Mono.error(new ReservationOverlapException(OVERLAP_MESSAGE))
-                    : Mono.empty());
+            conflicts ->
+                conflicts.isEmpty()
+                    ? Mono.<Void>empty()
+                    : Mono.error(new ReservationOverlapException(OVERLAP_MESSAGE, conflicts)));
+  }
+
+  /** The end must come after the start; anything else can't be checked for clashes sensibly. */
+  private Mono<Void> assertValidWindow(ReservationEventDateDto window) {
+    return Mono.fromCallable(
+            () -> {
+              LocalDateTime start =
+                  dateTimeUtil.obtainLocalDateTimeFromISOString(window.startDateTime());
+              LocalDateTime end =
+                  dateTimeUtil.obtainLocalDateTimeFromISOString(window.endDateTime());
+              if (!end.isAfter(start)) {
+                throw new InvalidReservationWindowException(
+                    "The meeting must end after it starts.");
+              }
+              return true;
+            })
+        .then();
   }
 
   private Mono<Reservation> findEntityById(long reservationId) {

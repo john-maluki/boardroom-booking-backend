@@ -3,6 +3,9 @@ package dev.johnmaluki.boardroom_booking_backend.boardroom.service;
 import dev.johnmaluki.boardroom_booking_backend.boardroom.model.Boardroom;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationEventDateDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.model.Reservation;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationConflictDto;
+import java.time.LocalDateTime;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /** The parts of the boardroom service other aggregates need. */
@@ -24,4 +27,19 @@ public interface BoardroomServiceUtil {
    * another booking in the same boardroom.
    */
   Mono<Void> assertNoReservationOverlap(Reservation reservation);
+
+  /**
+   * The bookings that clash with a window in a boardroom (declined bookings never clash).
+   *
+   * @param reservationId a reservation to exclude, or {@code null}
+   */
+  Flux<ReservationConflictDto> findConflicts(
+      Long reservationId, Long boardroomId, LocalDateTime start, LocalDateTime end);
+
+  /**
+   * Serialises bookings for one boardroom for the rest of the current transaction, so that a
+   * clash check followed by a save can't race with another request for the same room. Must be
+   * called inside a {@code @Transactional} method.
+   */
+  Mono<Void> lockBoardroomForBooking(long boardroomId);
 }

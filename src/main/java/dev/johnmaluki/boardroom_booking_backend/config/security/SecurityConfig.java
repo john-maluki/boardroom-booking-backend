@@ -2,6 +2,8 @@ package dev.johnmaluki.boardroom_booking_backend.config.security;
 
 import dev.johnmaluki.boardroom_booking_backend.config.security.reactive.BearerTokenAuthenticationConverter;
 import dev.johnmaluki.boardroom_booking_backend.config.security.reactive.JwtAuthenticationManager;
+import dev.johnmaluki.boardroom_booking_backend.config.security.reactive.RestAccessDeniedHandler;
+import dev.johnmaluki.boardroom_booking_backend.config.security.reactive.RestAuthenticationEntryPoint;
 import dev.johnmaluki.boardroom_booking_backend.util.RoleType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +30,12 @@ import org.springframework.security.web.server.context.NoOpServerSecurityContext
  *
  * <p>Path rules mirror the previous configuration, including letting anything not named fall
  * through to "must be authenticated".
+ *
+ * <p>{@code exceptionHandling} is what gives an unauthenticated or under-privileged request the
+ * same {@code ResourceErrorMessage}-shaped body every other error in the API returns — a failure
+ * here is caught by {@code ExceptionTranslationWebFilter} inside the security chain itself, never
+ * by {@code @ExceptionHandler}, so without wiring these two in it would fall back to Spring
+ * Security's own bare, empty-bodied defaults instead.
  */
 @Configuration
 @EnableWebFluxSecurity
@@ -35,6 +43,8 @@ import org.springframework.security.web.server.context.NoOpServerSecurityContext
 public class SecurityConfig {
   private final JwtAuthenticationManager jwtAuthenticationManager;
   private final BearerTokenAuthenticationConverter bearerTokenAuthenticationConverter;
+  private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+  private final RestAccessDeniedHandler restAccessDeniedHandler;
 
   @Bean
   public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
@@ -47,6 +57,16 @@ public class SecurityConfig {
         .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
         .logout(ServerHttpSecurity.LogoutSpec::disable)
         .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
+        // Without an explicit entry point, WebFlux falls back to the HTTP Basic one and sends
+        // "WWW-Authenticate: Basic", which makes browsers pop up their native sign-in dialog
+        // when the frontend calls the API on the same origin — RestAuthenticationEntryPoint
+        // avoids that same way HttpStatusServerEntryPoint(UNAUTHORIZED) did, and additionally
+        // gives the 401 (and the 403 below) a real JSON body instead of an empty one.
+        .exceptionHandling(
+            exceptions ->
+                exceptions
+                    .authenticationEntryPoint(restAuthenticationEntryPoint)
+                    .accessDeniedHandler(restAccessDeniedHandler))
         .addFilterAt(jwtFilter, SecurityWebFiltersOrder.AUTHENTICATION)
         .authorizeExchange(
             exchange ->

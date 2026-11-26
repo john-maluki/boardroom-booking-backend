@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
@@ -60,8 +61,10 @@ public class BoardroomController {
   @Operation(summary = "Check reservation event overlap")
   public Mono<ReservationOverlapResponseDto> checkReservationEventOverlap(
       @PathVariable("boardroomId") long boardroomId,
+      @RequestParam(value = "excludeReservationId", required = false) Long excludeReservationId,
       @RequestBody @Valid ReservationEventDateDto reservationEventDateDto) {
-    return boardroomService.checkBoardroomReservationOverlap(boardroomId, reservationEventDateDto);
+    return boardroomService.checkBoardroomReservationOverlap(
+        boardroomId, reservationEventDateDto, excludeReservationId);
   }
 
   @GetMapping("/boardrooms/{boardroomId}/archived-reservations")

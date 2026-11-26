@@ -30,6 +30,7 @@ import dev.johnmaluki.boardroom_booking_backend.equipment.dto.EquipmentResponseD
 import dev.johnmaluki.boardroom_booking_backend.equipment.mapper.EquipmentMapper;
 import dev.johnmaluki.boardroom_booking_backend.equipment.repository.EquipmentRepository;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationEventDateDto;
+import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationConflictDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationOverlapResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.dto.ReservationResponseDto;
 import dev.johnmaluki.boardroom_booking_backend.reservation.mapper.ReservationMapper;
@@ -42,6 +43,7 @@ import dev.johnmaluki.boardroom_booking_backend.user.repository.AppUserRepositor
 import dev.johnmaluki.boardroom_booking_backend.user.repository.UserQueryRepository;
 import dev.johnmaluki.boardroom_booking_backend.util.DateTimeUtil;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -339,9 +341,19 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
 
   @Override
   public Mono<ReservationOverlapResponseDto> checkBoardroomReservationOverlap(
-      long boardroomId, ReservationEventDateDto reservationEventDateDto) {
-    return hasReservationOverlap(null, boardroomId, reservationEventDateDto)
-        .map(reservationMapper::toReservationOverlapResponseDto);
+      long boardroomId, ReservationEventDateDto reservationEventDateDto, Long excludeReservationId) {
+    LocalDateTime start =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.startDateTime());
+    LocalDateTime end =
+        dateTimeUtil.obtainLocalDateTimeFromISOString(reservationEventDateDto.endDateTime());
+    return findConflicts(excludeReservationId, boardroomId, start, end)
+        .collectList()
+        .map(
+            conflicts ->
+                ReservationOverlapResponseDto.builder()
+                    .overlap(!conflicts.isEmpty())
+                    .conflicts(conflicts)
+                    .build());
   }
 
   /**
@@ -385,18 +397,38 @@ public class BoardroomServiceImpl implements BoardroomService, BoardroomServiceU
 
   @Override
   public Mono<Void> assertNoReservationOverlap(Reservation reservation) {
-    return reservationRepository
-        .countBoardroomConflictingEvents(
+    return findConflicts(
             reservation.getId(),
             reservation.getBoardroomId(),
             reservation.getStartLocalDateTime(),
             reservation.getEndLocalDateTime())
-        .defaultIfEmpty(0L)
+        .collectList()
         .flatMap(
-            count ->
-                count > 0
-                    ? Mono.error(new ReservationOverlapException(OVERLAP_MESSAGE))
-                    : Mono.empty());
+            conflicts ->
+                conflicts.isEmpty()
+                    ? Mono.<Void>empty()
+                    : Mono.error(new ReservationOverlapException(OVERLAP_MESSAGE, conflicts)));
+  }
+
+  @Override
+  public Flux<ReservationConflictDto> findConflicts(
+      Long reservationId, Long boardroomId, LocalDateTime start, LocalDateTime end) {
+    return reservationRepository
+        .findBoardroomConflictingEvents(reservationId, boardroomId, start, end)
+        .map(
+            r ->
+                ReservationConflictDto.builder()
+                    .id(r.getId())
+                    .meetingTitle(r.getMeetingTitle())
+                    .startDateTime(r.getStartLocalDateTime().atOffset(ZoneOffset.UTC).toString())
+                    .endDateTime(r.getEndLocalDateTime().atOffset(ZoneOffset.UTC).toString())
+                    .approvalStatus(r.getApprovalStatus())
+                    .build());
+  }
+
+  @Override
+  public Mono<Void> lockBoardroomForBooking(long boardroomId) {
+    return reservationRepository.lockBoardroomForBooking(boardroomId).then();
   }
 
   private Flux<Boardroom> cachedActiveBoardrooms() {
