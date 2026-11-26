@@ -1,12 +1,12 @@
 package dev.johnmaluki.boardroom_booking_backend.config;
 
+import dev.johnmaluki.boardroom_booking_backend.config.JdbcUrlParser.ConnectionTarget;
 import io.r2dbc.pool.ConnectionPool;
 import io.r2dbc.pool.ConnectionPoolConfiguration;
 import io.r2dbc.spi.ConnectionFactories;
 import io.r2dbc.spi.ConnectionFactory;
 import io.r2dbc.spi.ConnectionFactoryOptions;
 import java.io.IOException;
-import java.net.URI;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -46,13 +46,13 @@ import org.springframework.r2dbc.connection.init.ResourceDatabasePopulator;
  * main()}.
  *
  * <p>{@code app.datasource.url} keeps the {@code jdbc:} prefix even though nothing here speaks
- * JDBC: it is still the one URL string the host/port/database are parsed out of, and the prefix
- * is simply stripped below.
+ * JDBC: it is still the one URL string the host/port/database are parsed out of, via {@link
+ * JdbcUrlParser} — shared with {@code DatabaseBackupService}, so a {@code pg_dump} always targets
+ * the exact same database this connection factory does.
  */
 @Configuration
 @Slf4j
 public class DatabaseConfig {
-  private static final int DEFAULT_POSTGRES_PORT = 5432;
   private static final String TABLE_SCRIPTS_LOCATION_PATTERN = "classpath:tables/*.sql";
 
   @Value("${app.datasource.url}")
@@ -129,17 +129,19 @@ public class DatabaseConfig {
   }
 
   private ConnectionFactory rawConnectionFactory() {
-    URI uri = jdbcUriWithoutScheme();
-    String database = uri.getPath() == null ? "" : uri.getPath().replaceFirst("^/", "");
-    int port = uri.getPort() == -1 ? DEFAULT_POSTGRES_PORT : uri.getPort();
-    log.info("Connecting to Postgres over R2DBC at {}:{}/{}", uri.getHost(), port, database);
+    ConnectionTarget target = JdbcUrlParser.parse(jdbcUrl);
+    log.info(
+        "Connecting to Postgres over R2DBC at {}:{}/{}",
+        target.host(),
+        target.port(),
+        target.database());
 
     return ConnectionFactories.get(
         ConnectionFactoryOptions.builder()
             .option(ConnectionFactoryOptions.DRIVER, "postgresql")
-            .option(ConnectionFactoryOptions.HOST, uri.getHost())
-            .option(ConnectionFactoryOptions.PORT, port)
-            .option(ConnectionFactoryOptions.DATABASE, database)
+            .option(ConnectionFactoryOptions.HOST, target.host())
+            .option(ConnectionFactoryOptions.PORT, target.port())
+            .option(ConnectionFactoryOptions.DATABASE, target.database())
             .option(ConnectionFactoryOptions.USER, username)
             .option(ConnectionFactoryOptions.PASSWORD, password)
             .build());
@@ -162,19 +164,5 @@ public class DatabaseConfig {
       throw new IllegalStateException(
           "Could not list table DDL scripts at " + TABLE_SCRIPTS_LOCATION_PATTERN, e);
     }
-  }
-
-  /**
-   * {@code URI} cannot parse {@code jdbc:postgresql://host/db} directly, because the {@code jdbc:}
-   * scheme leaves the rest opaque. Dropping that prefix gives a URI whose host, port and path can
-   * be read normally.
-   */
-  private URI jdbcUriWithoutScheme() {
-    String withoutJdbc = jdbcUrl.startsWith("jdbc:") ? jdbcUrl.substring("jdbc:".length()) : jdbcUrl;
-    int queryStart = withoutJdbc.indexOf('?');
-    if (queryStart >= 0) {
-      withoutJdbc = withoutJdbc.substring(0, queryStart);
-    }
-    return URI.create(withoutJdbc);
   }
 }
